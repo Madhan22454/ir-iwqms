@@ -23,6 +23,21 @@ try:
         openapi_url=f"{settings.API_V1_STR}/openapi.json",
     )
 
+    from fastapi import Request
+    from fastapi.responses import JSONResponse
+    @app.middleware("http")
+    async def debug_path_middleware(request: Request, call_next):
+        if request.scope.get("path") == "/debug":
+            return JSONResponse(
+                content={
+                    "url": str(request.url),
+                    "scope_path": request.scope.get("path"),
+                    "raw_path": request.scope.get("raw_path", b"").decode("utf-8"),
+                    "headers": dict(request.headers)
+                }
+            )
+        return await call_next(request)
+
     # CORS
     cors_origins = [origin.strip() for origin in settings.ALLOWED_ORIGINS.split(",") if origin.strip()]
     app.add_middleware(
