@@ -7,7 +7,7 @@ import {
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 
-const API = 'http://localhost:8000/api/v1';
+import { API_URL as API } from '../config/api';
 
 const WORKFLOW_STEPS = [
   { key: 'OPEN', label: 'Alert Created', icon: AlertTriangle, color: 'red' },

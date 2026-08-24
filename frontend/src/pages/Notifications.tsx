@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import axios from 'axios';
 import { Bell } from 'lucide-react';
 
-const API = 'http://localhost:8000/api/v1';
+import { API_URL as API } from '../config/api';
 
 export default function Notifications() {
   const [notifications, setNotifications] = useState<any[]>([]);

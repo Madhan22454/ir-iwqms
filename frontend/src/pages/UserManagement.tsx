@@ -3,7 +3,7 @@ import axios from 'axios';
 import { Users, RefreshCw, Edit2, Shield, X, Check, Search } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 
-const API_URL = 'http://localhost:8000/api/v1';
+import { API_URL } from '../config/api';
 
 export default function UserManagement() {
   const { token } = useAuth();

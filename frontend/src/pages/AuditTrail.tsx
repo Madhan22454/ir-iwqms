@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import axios from 'axios';
 import { Activity } from 'lucide-react';
 
-const API = 'http://localhost:8000/api/v1';
+import { API_URL as API } from '../config/api';
 
 const ACTION_COLORS: Record<string, string> = {
   LOGIN: 'bg-blue-900/30 text-blue-400',

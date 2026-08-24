@@ -3,7 +3,7 @@ import axios from 'axios';
 import { ClipboardList, Filter } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 
-const API = 'http://localhost:8000/api/v1';
+import { API_URL as API } from '../config/api';
 
 const STATUS_COLORS: Record<string, string> = {
   OPEN: 'bg-red-900/30 text-red-400 border-red-600/40',

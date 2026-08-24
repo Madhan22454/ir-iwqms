@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import axios from 'axios';
 import { AlertTriangle, Filter, RefreshCw, ChevronRight, Clock, CheckCircle } from 'lucide-react';
 
-const API = 'http://localhost:8000/api/v1';
+import { API_URL as API } from '../config/api';
 
 const STATUS_STYLES: Record<string, { bg: string; text: string; dot: string }> = {
   OPEN: { bg: 'bg-red-900/30 border-red-500/50', text: 'text-red-400', dot: 'bg-red-500' },

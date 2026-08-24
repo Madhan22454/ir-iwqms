@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import axios from 'axios';
 import { Database, RefreshCw } from 'lucide-react';
 
-const API_URL = 'http://localhost:8000/api/v1';
+import { API_URL } from '../config/api';
 
 export function MasterData() {
   const [activeTab, setActiveTab] = useState('zones');

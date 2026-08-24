@@ -7,8 +7,11 @@ class Settings(BaseSettings):
     SECRET_KEY: str = "demo-super-secret-key-12345" # In production, this should be a secure random string
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 60 * 24 * 8 # 8 days
     
-    # SQLite for prototype
-    DATABASE_URL: str = "sqlite:///./ir_iwqms.db"
+    # Support public deployment or fallback to local SQLite
+    DATABASE_URL: str = os.getenv("DATABASE_URL", "sqlite:///./ir_iwqms.db")
+    
+    # CORS Origins (comma separated list from env)
+    ALLOWED_ORIGINS: list = os.getenv("ALLOWED_ORIGINS", "http://localhost:5173,http://localhost:3000,https://madhan22454.github.io").split(",")
 
     class Config:
         case_sensitive = True

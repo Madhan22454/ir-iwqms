@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import axios from 'axios';
 import { BarChart3, Download } from 'lucide-react';
 
-const API = 'http://localhost:8000/api/v1';
+import { API_URL as API } from '../config/api';
 
 const RESULT_TABS = [
   { label: 'All Reports', value: '' },
