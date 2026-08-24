@@ -12,8 +12,7 @@ from core.config import settings
 from models import user, hierarchy, master, lab, alert, workflow, audit  # noqa
 from database import Base, engine
 
-# Create / migrate tables
-Base.metadata.create_all(bind=engine)
+# Tables are managed by the seed script, do not create them on every serverless invocation
 
 from api import auth, hierarchy as hierarchy_api, master as master_api
 from api import healthcard, users, labs, alerts, workflow as workflow_api
