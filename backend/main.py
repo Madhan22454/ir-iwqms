@@ -27,16 +27,15 @@ try:
     from fastapi.responses import JSONResponse
     @app.middleware("http")
     async def debug_path_middleware(request: Request, call_next):
-        if request.scope.get("path") == "/debug":
-            return JSONResponse(
-                content={
-                    "url": str(request.url),
-                    "scope_path": request.scope.get("path"),
-                    "raw_path": request.scope.get("raw_path", b"").decode("utf-8"),
-                    "headers": dict(request.headers)
-                }
-            )
-        return await call_next(request)
+        # unconditionally dump for debugging
+        return JSONResponse(
+            content={
+                "url": str(request.url),
+                "scope_path": request.scope.get("path"),
+                "raw_path": request.scope.get("raw_path", b"").decode("utf-8"),
+                "headers": dict(request.headers)
+            }
+        )
 
     # CORS
     cors_origins = [origin.strip() for origin in settings.ALLOWED_ORIGINS.split(",") if origin.strip()]
