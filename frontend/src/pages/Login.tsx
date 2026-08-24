@@ -230,7 +230,7 @@ export function Login() {
               🔒 Authorized personnel only. All access is logged.
             </p>
             <p style={{ fontSize: 12, color: '#94a3b8', marginTop: 6 }}>
-              Demo: <strong>ADMIN001</strong> / <strong>admin123</strong>
+              Demo: <strong>central.admin</strong> / <strong>admin123</strong>
             </p>
           </div>
         </div>
