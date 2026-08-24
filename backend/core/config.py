@@ -11,7 +11,7 @@ class Settings(BaseSettings):
     DATABASE_URL: str = os.getenv("DATABASE_URL", "sqlite:///./ir_iwqms.db")
     
     # CORS Origins (comma separated list from env)
-    ALLOWED_ORIGINS: list = os.getenv("ALLOWED_ORIGINS", "http://localhost:5173,http://localhost:3000,https://madhan22454.github.io").split(",")
+    ALLOWED_ORIGINS: str = os.getenv("ALLOWED_ORIGINS", "http://localhost:5173,http://localhost:3000,https://madhan22454.github.io")
 
     class Config:
         case_sensitive = True
