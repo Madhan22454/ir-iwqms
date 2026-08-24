@@ -79,6 +79,11 @@ try:
             "application": "IR-IWQMS API"
         }
 
+    from fastapi import Request
+    @app.route("/{path:path}", methods=["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"])
+    async def catch_all_debug(request: Request, path: str):
+        return {"debug_path": path, "url": str(request.url), "scope_path": request.scope.get("path")}
+
 except Exception as e:
     err_trace = traceback.format_exc()
     from fastapi import FastAPI
