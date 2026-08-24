@@ -12,11 +12,26 @@ import {
   BarChart3,
   Bell,
   History,
-  Users
+  Users,
+  ClipboardList
 } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
 
-const navSections = [
+type NavItem = {
+  to: string;
+  label: string;
+  icon: any;
+  end: boolean;
+  badge?: string;
+  roles?: string[];
+};
+
+type NavSection = {
+  title: string;
+  items: NavItem[];
+};
+
+const navSections: NavSection[] = [
   {
     title: "Core Surveillance",
     items: [
