@@ -6,7 +6,7 @@ import {
   MapPin, QrCode, FlaskConical, X
 } from 'lucide-react';
 
-const API_URL = 'http://localhost:8000/api/v1';
+import { API_URL } from '../config/api';
 
 const STATUS_CONFIG: Record<string, { icon: any; bg: string; text: string; border: string; label: string }> = {
   COMPLIANT: { icon: ShieldCheck, bg: '#f0fdf4', text: '#16a34a', border: '#bbf7d0', label: 'Compliant' },

@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import axios from 'axios';
 import { FlaskConical, AlertTriangle, Loader2, Plus, Trash2 } from 'lucide-react';
 
-const API = 'http://localhost:8000/api/v1';
+import { API_URL as API } from '../config/api';
 
 interface Source { id: number; source_id_code: string; source_type: string; station?: any; }
 interface Lab { id: number; name: string; code: string; }

@@ -11,7 +11,7 @@ import {
   FlaskConical, ClipboardList, ChevronRight, RefreshCw
 } from 'lucide-react';
 
-const API_URL = 'http://localhost:8000/api/v1';
+import { API_URL } from '../config/api';
 
 const STATUS_COLORS: Record<string, string> = {
   COMPLIANT: '#16a34a',

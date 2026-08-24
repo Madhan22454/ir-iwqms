@@ -22,7 +22,7 @@ app = FastAPI(
 # CORS
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=settings.ALLOWED_ORIGINS,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -66,4 +66,11 @@ def read_root():
         "message": "Welcome to IR-IWQMS API v2.0",
         "docs": "/docs",
         "version": "2.0.0",
+    }
+
+@app.get("/health")
+def health_check():
+    return {
+        "status": "healthy",
+        "application": "IR-IWQMS API"
     }
