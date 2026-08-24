@@ -2,7 +2,7 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker, declarative_base
 from core.config import settings
 
-db_url = settings.DATABASE_URL
+db_url = settings.DATABASE_URL.strip()
 if db_url.startswith("postgresql://"):
     db_url = db_url.replace("postgresql://", "postgresql+pg8000://")
 
