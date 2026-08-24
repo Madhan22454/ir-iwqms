@@ -79,3 +79,31 @@ def health_check():
         "status": "healthy",
         "application": "IR-IWQMS API"
     }
+
+@app.get("/api/v1/system/auth-status")
+def auth_status():
+    """Safe diagnostic endpoint — no secrets exposed."""
+    import traceback
+    result = {
+        "backend": "online",
+        "database": "unknown",
+        "db_driver": settings.DATABASE_URL.split("://")[0] if "://" in settings.DATABASE_URL else "unknown",
+        "user_count": 0,
+        "users": [],
+    }
+    try:
+        from database import SessionLocal
+        from models.user import User
+        db = SessionLocal()
+        users = db.query(User).all()
+        result["database"] = "connected"
+        result["user_count"] = len(users)
+        result["users"] = [
+            {"employee_id": u.employee_id, "role": u.role, "is_active": u.is_active}
+            for u in users
+        ]
+        db.close()
+    except Exception as e:
+        result["database"] = f"error: {type(e).__name__}: {str(e)}"
+        result["traceback"] = traceback.format_exc()
+    return result
