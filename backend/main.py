@@ -1,8 +1,7 @@
 import sys
 import os
 
-# Add backend directory to Python path for Vercel
-sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+# Deploying directly from backend/ directory on Vercel
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
