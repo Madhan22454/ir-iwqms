@@ -8,10 +8,10 @@ class Settings(BaseSettings):
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 60 * 24 * 8 # 8 days
     
     # Support public deployment or fallback to local SQLite
-    DATABASE_URL: str = os.getenv("DATABASE_URL", "sqlite:///./ir_iwqms.db")
+    DATABASE_URL: str = os.getenv("DATABASE_URL", "sqlite:///./ir_iwqms.db").strip()
     
     # CORS Origins (comma separated list from env)
-    ALLOWED_ORIGINS: str = os.getenv("ALLOWED_ORIGINS", "http://localhost:5173,http://localhost:3000,https://madhan22454.github.io")
+    ALLOWED_ORIGINS: str = os.getenv("ALLOWED_ORIGINS", "http://localhost:5173,http://localhost:3000,https://madhan22454.github.io").strip()
 
     class Config:
         case_sensitive = True
