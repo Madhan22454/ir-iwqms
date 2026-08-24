@@ -5,6 +5,7 @@ import {
   AlertTriangle, CheckCircle, ArrowRight, FileText,
   User, Building2, Printer, Loader2, ChevronLeft, XCircle
 } from 'lucide-react';
+import { useAuth } from '../context/AuthContext';
 
 const API = 'http://localhost:8000/api/v1';
 
@@ -26,6 +27,7 @@ const RESULT_CONFIG: Record<string, { bar: string; badge: string }> = {
 
 export default function AlertDetail() {
   const { id } = useParams<{ id: string }>();
+  const { token } = useAuth();
   const [alert, setAlert] = useState<any>(null);
   const [ca, setCa] = useState<any>(null);
   const [rs, setRs] = useState<any>(null);
@@ -40,11 +42,13 @@ export default function AlertDetail() {
   const [msg, setMsg] = useState('');
 
   const load = async () => {
+    if (!token) return;
     setLoading(true);
+    const headers = { Authorization: `Bearer ${token}` };
     const [alertRes, caRes, rsRes] = await Promise.all([
-      axios.get(`${API}/alerts/${id}`),
-      axios.get(`${API}/workflow/corrective-actions/?alert_id=${id}`),
-      axios.get(`${API}/workflow/repeat-samples/?alert_id=${id}`),
+      axios.get(`${API}/alerts/${id}`, { headers }),
+      axios.get(`${API}/workflow/corrective-actions/?alert_id=${id}`, { headers }),
+      axios.get(`${API}/workflow/repeat-samples/?alert_id=${id}`, { headers }),
     ]);
     setAlert(alertRes.data);
     setCa(caRes.data[0] || null);
@@ -59,18 +63,23 @@ export default function AlertDetail() {
   const isEscalated = alert?.is_escalated && alert?.status === 'ESCALATED';
 
   const acknowledge = async () => {
+    if (!token) return;
     setSaving(true);
-    await axios.post(`${API}/alerts/${id}/acknowledge`, { remarks: ackRemarks });
+    await axios.post(`${API}/alerts/${id}/acknowledge`, { remarks: ackRemarks }, {
+      headers: { Authorization: `Bearer ${token}` }
+    });
     setMsg('Alert acknowledged successfully.');
     load();
     setSaving(false);
   };
 
   const updateCA = async () => {
-    if (!ca) return;
+    if (!ca || !token) return;
     setSaving(true);
     await axios.patch(`${API}/workflow/corrective-actions/${ca.id}`, {
       status: caStatus, remarks: caRemarks,
+    }, {
+      headers: { Authorization: `Bearer ${token}` }
     });
     setMsg('Corrective action updated.');
     load();
@@ -78,12 +87,15 @@ export default function AlertDetail() {
   };
 
   const submitVerification = async () => {
+    if (!token) return;
     setSaving(true);
     await axios.post(`${API}/workflow/verifications/`, {
       alert_id: Number(id),
       repeat_result: verResult,
       remarks: verRemarks,
       decision: verDecision,
+    }, {
+      headers: { Authorization: `Bearer ${token}` }
     });
     setMsg(verDecision === 'CLOSE' ? 'Alert closed successfully.' : 'Alert escalated.');
     load();

@@ -12,6 +12,17 @@ class UserBase(BaseModel):
     station_id: Optional[int] = None
     is_active: Optional[bool] = True
 
+class UserUpdate(BaseModel):
+    name: Optional[str] = None
+    email: Optional[EmailStr] = None
+    mobile_number: Optional[str] = None
+    role: Optional[str] = None
+    zone_id: Optional[int] = None
+    division_id: Optional[int] = None
+    station_id: Optional[int] = None
+    is_active: Optional[bool] = None
+    password: Optional[str] = None
+
 class UserCreate(UserBase):
     password: str
 

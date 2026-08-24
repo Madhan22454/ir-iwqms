@@ -36,8 +36,17 @@ def list_alerts(
     zone: Optional[str] = Query(None),
     skip: int = 0, limit: int = 200,
     db: Session = Depends(get_db),
+    current_user: CurrentUser = None,
 ):
     q = db.query(Alert)
+    
+    if current_user:
+        if current_user.role == "ZONAL_ADMIN" and current_user.zone:
+            q = q.filter(Alert.zone_name == current_user.zone.name)
+        elif current_user.role == "DIVISIONAL_OFFICER" and current_user.division:
+            q = q.filter(Alert.division_name == current_user.division.name)
+        elif current_user.role == "STATION_INCHARGE" and current_user.station:
+            q = q.filter(Alert.station_name == current_user.station.name)
     if status:
         statuses = [s.strip() for s in status.split(",")]
         q = q.filter(Alert.status.in_(statuses))
@@ -52,15 +61,25 @@ def list_alerts(
 
 
 @router.get("/summary")
-def alert_summary(db: Session = Depends(get_db)):
+def alert_summary(db: Session = Depends(get_db), current_user: CurrentUser = None):
     """Dashboard counts for the Alert Centre widget."""
-    total = db.query(Alert).count()
-    critical = db.query(Alert).filter(Alert.severity == "CRITICAL").count()
-    open_count = db.query(Alert).filter(Alert.status == "OPEN").count()
-    unfit = db.query(Alert).filter(Alert.sample_result == "UNFIT").count()
-    unsatisfactory = db.query(Alert).filter(Alert.sample_result == "UNSATISFACTORY").count()
-    escalated = db.query(Alert).filter(Alert.is_escalated == True).count()
-    closed = db.query(Alert).filter(Alert.status == "CLOSED").count()
+    q = db.query(Alert)
+    
+    if current_user:
+        if current_user.role == "ZONAL_ADMIN" and current_user.zone:
+            q = q.filter(Alert.zone_name == current_user.zone.name)
+        elif current_user.role == "DIVISIONAL_OFFICER" and current_user.division:
+            q = q.filter(Alert.division_name == current_user.division.name)
+        elif current_user.role == "STATION_INCHARGE" and current_user.station:
+            q = q.filter(Alert.station_name == current_user.station.name)
+
+    total = q.count()
+    critical = q.filter(Alert.severity == "CRITICAL").count()
+    open_count = q.filter(Alert.status == "OPEN").count()
+    unfit = q.filter(Alert.sample_result == "UNFIT").count()
+    unsatisfactory = q.filter(Alert.sample_result == "UNSATISFACTORY").count()
+    escalated = q.filter(Alert.is_escalated == True).count()
+    closed = q.filter(Alert.status == "CLOSED").count()
     return {
         "total": total, "critical": critical, "open": open_count,
         "unfit": unfit, "unsatisfactory": unsatisfactory,

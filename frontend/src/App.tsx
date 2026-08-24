@@ -14,7 +14,22 @@ import AuditTrail from './pages/AuditTrail'
 import Notifications from './pages/Notifications'
 import GISMap from './pages/GISMap'
 import Reports from './pages/Reports'
+import UserManagement from './pages/UserManagement'
 import './App.css'
+
+function RoleGuard({ children, allowedRoles }: { children: React.ReactNode, allowedRoles: string[] }) {
+  const { user } = useAuth()
+  if (!user) return <Navigate to="/login" replace />
+  if (!allowedRoles.includes(user.role)) {
+    return (
+      <div style={{ padding: 40, textAlign: 'center', color: '#64748b' }}>
+        <h2>Access Denied</h2>
+        <p>You do not have permission to view this page.</p>
+      </div>
+    )
+  }
+  return <>{children}</>
+}
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { isAuthenticated, isLoading } = useAuth()
@@ -42,6 +57,7 @@ function AppRoutes() {
 
       <Route path="/" element={<ProtectedRoute><Layout /></ProtectedRoute>}>
         <Route index element={<Dashboard />} />
+        <Route path="users" element={<RoleGuard allowedRoles={['CENTRAL_ADMIN']}><UserManagement /></RoleGuard>} />
         <Route path="master-data" element={<MasterData />} />
         <Route path="healthcard" element={<HealthCard />} />
         <Route path="lab/result-entry" element={<LabResultEntry />} />

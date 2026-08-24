@@ -27,26 +27,26 @@ def seed_all():
     from core.security import get_password_hash
 
     users_data = [
-        dict(employee_id="ADMIN001", name="Central Admin", email="admin@sr.ir.in",
+        dict(employee_id="central.admin", name="Central Admin", email="central.admin@sr.ir.in",
              role="CENTRAL_ADMIN", password="admin123"),
-        dict(employee_id="ZA-SR-001", name="Zonal Admin SR", email="zonal.sr@ir.in",
-             role="ZONAL_ADMIN", password="zonal123"),
-        dict(employee_id="DO-MAS-001", name="Div Officer Chennai", email="do.mas@ir.in",
-             role="DIVISIONAL_OFFICER", password="div123"),
-        dict(employee_id="HMI-MAS-001", name="H&MI Chennai", email="hmi.mas@ir.in",
-             role="HMI", password="hmi123"),
-        dict(employee_id="LAB-SR-001", name="Lab Technician SR", email="lab.sr@ir.in",
-             role="LABORATORY", password="lab123"),
-        dict(employee_id="ENG-MAS-001", name="Sec Engineer MAS", email="eng.mas@ir.in",
-             role="ENGINEERING", password="eng123"),
-        dict(employee_id="SI-MAS-001", name="Station Incharge MAS", email="si.mas@ir.in",
-             role="STATION_INCHARGE", password="si123"),
-        dict(employee_id="SM-SR-001", name="Senior Mgmt SR", email="sm.sr@ir.in",
-             role="SENIOR_MANAGEMENT", password="sm123"),
-        dict(employee_id="DO-TPJ-001", name="Div Officer Trichy", email="do.tpj@ir.in",
-             role="DIVISIONAL_OFFICER", password="div123"),
-        dict(employee_id="HMI-TBM-001", name="H&MI Tambaram", email="hmi.tbm@ir.in",
-             role="HMI", password="hmi123"),
+        dict(employee_id="zonal.admin", name="Zonal Admin SR", email="zonal.admin@sr.ir.in",
+             role="ZONAL_ADMIN", password="admin123"),
+        dict(employee_id="division.officer", name="Div Officer Chennai", email="division.officer@sr.ir.in",
+             role="DIVISIONAL_OFFICER", password="admin123"),
+        dict(employee_id="hmi.user", name="H&MI Chennai", email="hmi.user@sr.ir.in",
+             role="HMI", password="admin123"),
+        dict(employee_id="lab.user", name="Lab Technician SR", email="lab.user@sr.ir.in",
+             role="LABORATORY", password="admin123"),
+        dict(employee_id="engineering.user", name="Sec Engineer MAS", email="engineering.user@sr.ir.in",
+             role="ENGINEERING", password="admin123"),
+        dict(employee_id="station.user", name="Station Incharge MAS", email="station.user@sr.ir.in",
+             role="STATION_INCHARGE", password="admin123"),
+        dict(employee_id="management.user", name="Senior Mgmt SR", email="management.user@sr.ir.in",
+             role="SENIOR_MANAGEMENT", password="admin123"),
+        dict(employee_id="DO-TPJ-001", name="Div Officer Trichy", email="do.tpj2@ir.in",
+             role="DIVISIONAL_OFFICER", password="admin123"),
+        dict(employee_id="HMI-TBM-001", name="H&MI Tambaram", email="hmi.tbm2@ir.in",
+             role="HMI", password="admin123"),
     ]
 
     user_map = {}
@@ -88,8 +88,8 @@ def seed_all():
     db.commit()
 
     # Update zone users
-    if "ZA-SR-001" in user_map:
-        user_map["ZA-SR-001"].zone_id = zone_map["SR"].id
+    if "zonal.admin" in user_map:
+        user_map["zonal.admin"].zone_id = zone_map["SR"].id
     db.commit()
 
     # ─────────────────────────────────────────────────────────────────────────
@@ -115,8 +115,8 @@ def seed_all():
             div_map[d["code"]] = existing
     db.commit()
 
-    if "DO-MAS-001" in user_map:
-        user_map["DO-MAS-001"].division_id = div_map["MAS"].id
+    if "division.officer" in user_map:
+        user_map["division.officer"].division_id = div_map["MAS"].id
     db.commit()
 
     # ─────────────────────────────────────────────────────────────────────────
@@ -151,8 +151,8 @@ def seed_all():
             station_map[s["code"]] = existing
     db.commit()
 
-    if "SI-MAS-001" in user_map:
-        user_map["SI-MAS-001"].station_id = station_map["MAS"].id
+    if "station.user" in user_map:
+        user_map["station.user"].station_id = station_map["MAS"].id
     db.commit()
 
     # ─────────────────────────────────────────────────────────────────────────
@@ -410,14 +410,14 @@ def seed_all():
     from models.alert import OfficerResponsibility
 
     resp_data = [
-        dict(src="MAS-OW-01", uid="HMI-MAS-001", role="HMI"),
-        dict(src="MAS-OW-01", uid="ENG-MAS-001", role="ENGINEERING"),
-        dict(src="MAS-OW-01", uid="SI-MAS-001", role="STATION_INCHARGE"),
-        dict(src="MAS-OW-01", uid="DO-MAS-001", role="DIVISIONAL_OFFICER"),
-        dict(src="MAS-BW-01", uid="HMI-MAS-001", role="HMI"),
-        dict(src="MAS-BW-01", uid="ENG-MAS-001", role="ENGINEERING"),
+        dict(src="MAS-OW-01", uid="hmi.user", role="HMI"),
+        dict(src="MAS-OW-01", uid="engineering.user", role="ENGINEERING"),
+        dict(src="MAS-OW-01", uid="station.user", role="STATION_INCHARGE"),
+        dict(src="MAS-OW-01", uid="division.officer", role="DIVISIONAL_OFFICER"),
+        dict(src="MAS-BW-01", uid="hmi.user", role="HMI"),
+        dict(src="MAS-BW-01", uid="engineering.user", role="ENGINEERING"),
         dict(src="SA-BW-01", uid="DO-TPJ-001", role="DIVISIONAL_OFFICER"),
-        dict(src="PGT-BW-01", uid="ZA-SR-001", role="ZONAL_ADMIN"),
+        dict(src="PGT-BW-01", uid="zonal.admin", role="ZONAL_ADMIN"),
     ]
     for r in resp_data:
         src = source_map.get(r["src"])
@@ -438,7 +438,7 @@ def seed_all():
     # ─────────────────────────────────────────────────────────────────────────
     # DEMO SAMPLES + REPORTS (for existing UNFIT/UNSATISFACTORY/COMPLIANT demo)
     # ─────────────────────────────────────────────────────────────────────────
-    lab_user = user_map.get("LAB-SR-001")
+    lab_user = user_map.get("lab.user")
     central_lab = lab_map.get("SR-WTL")
     mas_lab = lab_map.get("MAS-WTL")
 
@@ -701,12 +701,14 @@ def seed_all():
     print("\n[SEED] Complete!")
     print("=" * 50)
     print("Demo Logins:")
-    print("  ADMIN001     / admin123  (Central Admin)")
-    print("  LAB-SR-001   / lab123    (Laboratory)")
-    print("  HMI-MAS-001  / hmi123    (H&MI)")
-    print("  DO-MAS-001   / div123    (Divisional Officer)")
-    print("  ZA-SR-001    / zonal123  (Zonal Admin)")
-    print("  SM-SR-001    / sm123     (Senior Management)")
+    print("  central.admin      / admin123  (Central Admin)")
+    print("  zonal.admin        / admin123  (Zonal Admin)")
+    print("  division.officer   / admin123  (Divisional Officer)")
+    print("  hmi.user           / admin123  (H&MI)")
+    print("  engineering.user   / admin123  (Engineering)")
+    print("  lab.user           / admin123  (Laboratory)")
+    print("  station.user       / admin123  (Station Incharge)")
+    print("  management.user    / admin123  (Senior Management)")
     print("=" * 50)
     print("Demo Alerts: ALT-2024-0001 (UNFIT), ALT-2024-0002 (UNSATISFACTORY)")
 
