@@ -38,8 +38,18 @@ def list_corrective_actions(
     status: Optional[str] = Query(None),
     skip: int = 0, limit: int = 100,
     db: Session = Depends(get_db),
+    current_user: CurrentUser = None,
 ):
     q = db.query(CorrectiveAction)
+    
+    if current_user:
+        if current_user.role == "ZONAL_ADMIN" and current_user.zone:
+            q = q.join(Alert).filter(Alert.zone_name == current_user.zone.name)
+        elif current_user.role == "DIVISIONAL_OFFICER" and current_user.division:
+            q = q.join(Alert).filter(Alert.division_name == current_user.division.name)
+        elif current_user.role == "STATION_INCHARGE" and current_user.station:
+            q = q.join(Alert).filter(Alert.station_name == current_user.station.name)
+
     if alert_id:
         q = q.filter(CorrectiveAction.alert_id == alert_id)
     if status:
@@ -85,8 +95,18 @@ def list_repeat_samples(
     status: Optional[str] = Query(None),
     skip: int = 0, limit: int = 100,
     db: Session = Depends(get_db),
+    current_user: CurrentUser = None,
 ):
     q = db.query(RepeatSample)
+    
+    if current_user:
+        if current_user.role == "ZONAL_ADMIN" and current_user.zone:
+            q = q.join(Alert).filter(Alert.zone_name == current_user.zone.name)
+        elif current_user.role == "DIVISIONAL_OFFICER" and current_user.division:
+            q = q.join(Alert).filter(Alert.division_name == current_user.division.name)
+        elif current_user.role == "STATION_INCHARGE" and current_user.station:
+            q = q.join(Alert).filter(Alert.station_name == current_user.station.name)
+
     if alert_id:
         q = q.filter(RepeatSample.alert_id == alert_id)
     if status:
@@ -153,6 +173,20 @@ def create_verification(
     if ver.decision == "CLOSE":
         alert.status = "CLOSED"
         alert.closed_at = datetime.datetime.utcnow()
+        
+        # Update WaterSource
+        from models.hierarchy import WaterSource
+        source = db.query(WaterSource).filter(WaterSource.id == alert.water_source_id).first()
+        if source:
+            source.current_status = "COMPLIANT"
+            source.consecutive_failures = 0
+            
+        # Update Corrective Action if any
+        ca = db.query(CorrectiveAction).filter(CorrectiveAction.alert_id == alert.id).first()
+        if ca and ca.status != "COMPLETED":
+            ca.status = "COMPLETED"
+            ca.completed_date = datetime.datetime.utcnow()
+            
     elif ver.decision == "ESCALATE":
         alert.is_escalated = True
         alert.escalation_level = (alert.escalation_level or 0) + 1
@@ -207,8 +241,18 @@ def list_notifications(
     alert_id: Optional[int] = Query(None),
     skip: int = 0, limit: int = 100,
     db: Session = Depends(get_db),
+    current_user: CurrentUser = None,
 ):
     q = db.query(AlertNotification)
+    
+    if current_user:
+        if current_user.role == "ZONAL_ADMIN" and current_user.zone:
+            q = q.join(Alert).filter(Alert.zone_name == current_user.zone.name)
+        elif current_user.role == "DIVISIONAL_OFFICER" and current_user.division:
+            q = q.join(Alert).filter(Alert.division_name == current_user.division.name)
+        elif current_user.role == "STATION_INCHARGE" and current_user.station:
+            q = q.join(Alert).filter(Alert.station_name == current_user.station.name)
+
     if alert_id:
         q = q.filter(AlertNotification.alert_id == alert_id)
     return q.order_by(AlertNotification.created_at.desc()).offset(skip).limit(limit).all()

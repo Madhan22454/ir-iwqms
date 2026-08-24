@@ -8,11 +8,11 @@ import {
   ChevronRight,
   FlaskConical,
   AlertTriangle,
-  ClipboardList,
   MapPin,
   BarChart3,
   Bell,
-  History
+  History,
+  Users
 } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
 
@@ -31,7 +31,7 @@ const navSections = [
     items: [
       { to: "/corrective-actions", label: "Corrective Actions", icon: ClipboardList, end: false },
       { to: "/gis", label: "GIS Surveillance Map", icon: MapPin, end: false },
-      { to: "/master-data", label: "Master Data", icon: Database, end: false },
+      { to: "/master-data", label: "Master Data", icon: Database, end: false, roles: ["CENTRAL_ADMIN", "ZONAL_ADMIN"] },
       { to: "/reports", label: "Reports & Analytics", icon: BarChart3, end: false },
     ],
   },
@@ -39,7 +39,8 @@ const navSections = [
     title: "Governance",
     items: [
       { to: "/notifications", label: "Notifications", icon: Bell, end: false },
-      { to: "/audit", label: "Audit Trail", icon: History, end: false },
+      { to: "/audit", label: "Audit Trail", icon: History, end: false, roles: ["CENTRAL_ADMIN", "ZONAL_ADMIN", "SENIOR_MANAGEMENT"] },
+      { to: "/users", label: "User Management", icon: Users, end: false, roles: ["CENTRAL_ADMIN"] },
     ],
   },
 ];
@@ -97,52 +98,59 @@ export function Layout() {
 
         {/* Navigation - Scrollable */}
         <nav style={{ padding: "14px 10px", flex: 1, overflowY: "auto" }}>
-          {navSections.map((section, sIdx) => (
-            <div key={sIdx} style={{ marginBottom: 16 }}>
-              <div style={{
-                fontSize: 10, fontWeight: 800, color: "rgba(147,197,253,0.65)",
-                letterSpacing: "0.1em", textTransform: "uppercase", padding: "0 10px", marginBottom: 6,
-              }}>
-                {section.title}
+          {navSections.map((section, sIdx) => {
+            const filteredItems = section.items.filter(item => 
+              !item.roles || (user && item.roles.includes(user.role))
+            );
+            if (filteredItems.length === 0) return null;
+            
+            return (
+              <div key={sIdx} style={{ marginBottom: 16 }}>
+                <div style={{
+                  fontSize: 10, fontWeight: 800, color: "rgba(147,197,253,0.65)",
+                  letterSpacing: "0.1em", textTransform: "uppercase", padding: "0 10px", marginBottom: 6,
+                }}>
+                  {section.title}
+                </div>
+                {filteredItems.map(({ to, label, icon: Icon, end, badge }) => (
+                  <NavLink
+                    key={to}
+                    to={to}
+                    end={end}
+                    style={({ isActive }) => ({
+                      display: "flex", alignItems: "center", gap: 10,
+                      padding: "9px 12px", borderRadius: 9, marginBottom: 3,
+                      textDecoration: "none",
+                      background: isActive ? "rgba(59,130,246,0.22)" : "transparent",
+                      color: isActive ? "#ffffff" : "rgba(255,255,255,0.68)",
+                      fontWeight: isActive ? 700 : 500,
+                      fontSize: 13.5,
+                      transition: "all 0.15s ease",
+                      border: isActive ? "1px solid rgba(147,197,253,0.3)" : "1px solid transparent",
+                      boxShadow: isActive ? "0 2px 8px rgba(0,0,0,0.2)" : "none",
+                    })}
+                  >
+                    {({ isActive }) => (
+                      <>
+                        <Icon size={17} style={{ color: isActive ? "#60a5fa" : "inherit", flexShrink: 0 }} />
+                        <span style={{ flex: 1, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{label}</span>
+                        {badge && (
+                          <span style={{
+                            fontSize: 9.5, fontWeight: 800, padding: "2px 6px", borderRadius: 6,
+                            background: "#ef4444", color: "white", textTransform: "uppercase",
+                            boxShadow: "0 0 6px rgba(239,68,68,0.6)",
+                          }}>
+                            {badge}
+                          </span>
+                        )}
+                        {isActive && <ChevronRight size={13} style={{ opacity: 0.8 }} />}
+                      </>
+                    )}
+                  </NavLink>
+                ))}
               </div>
-              {section.items.map(({ to, label, icon: Icon, end, badge }) => (
-                <NavLink
-                  key={to}
-                  to={to}
-                  end={end}
-                  style={({ isActive }) => ({
-                    display: "flex", alignItems: "center", gap: 10,
-                    padding: "9px 12px", borderRadius: 9, marginBottom: 3,
-                    textDecoration: "none",
-                    background: isActive ? "rgba(59,130,246,0.22)" : "transparent",
-                    color: isActive ? "#ffffff" : "rgba(255,255,255,0.68)",
-                    fontWeight: isActive ? 700 : 500,
-                    fontSize: 13.5,
-                    transition: "all 0.15s ease",
-                    border: isActive ? "1px solid rgba(147,197,253,0.3)" : "1px solid transparent",
-                    boxShadow: isActive ? "0 2px 8px rgba(0,0,0,0.2)" : "none",
-                  })}
-                >
-                  {({ isActive }) => (
-                    <>
-                      <Icon size={17} style={{ color: isActive ? "#60a5fa" : "inherit", flexShrink: 0 }} />
-                      <span style={{ flex: 1, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{label}</span>
-                      {badge && (
-                        <span style={{
-                          fontSize: 9.5, fontWeight: 800, padding: "2px 6px", borderRadius: 6,
-                          background: "#ef4444", color: "white", textTransform: "uppercase",
-                          boxShadow: "0 0 6px rgba(239,68,68,0.6)",
-                        }}>
-                          {badge}
-                        </span>
-                      )}
-                      {isActive && <ChevronRight size={13} style={{ opacity: 0.8 }} />}
-                    </>
-                  )}
-                </NavLink>
-              ))}
-            </div>
-          ))}
+            );
+          })}
         </nav>
 
         {/* User info + Logout */}

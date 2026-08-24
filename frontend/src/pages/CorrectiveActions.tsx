@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import axios from 'axios';
 import { ClipboardList, Filter } from 'lucide-react';
+import { useAuth } from '../context/AuthContext';
 
 const API = 'http://localhost:8000/api/v1';
 
@@ -15,14 +16,18 @@ const STATUS_COLORS: Record<string, string> = {
 };
 
 export default function CorrectiveActions() {
+  const { token } = useAuth();
   const [actions, setActions] = useState<any[]>([]);
   const [statusFilter, setStatusFilter] = useState('');
   const [loading, setLoading] = useState(true);
 
   const load = async () => {
+    if (!token) return;
     setLoading(true);
     const params = statusFilter ? `?status=${statusFilter}` : '';
-    const res = await axios.get(`${API}/workflow/corrective-actions/${params}`);
+    const res = await axios.get(`${API}/workflow/corrective-actions/${params}`, {
+      headers: { Authorization: `Bearer ${token}` }
+    });
     setActions(res.data);
     setLoading(false);
   };

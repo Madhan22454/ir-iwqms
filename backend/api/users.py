@@ -4,7 +4,7 @@ from typing import List
 
 from api.deps import get_db, CurrentUser
 from models.user import User
-from schemas.user import UserCreate, UserResponse
+from schemas.user import UserCreate, UserResponse, UserUpdate
 from core.security import get_password_hash
 
 router = APIRouter()
@@ -61,4 +61,29 @@ def get_user(
     user = db.query(User).filter(User.id == user_id).first()
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
+    return user
+
+@router.put("/{user_id}", response_model=UserResponse)
+def update_user(
+    user_id: int,
+    user_in: UserUpdate,
+    db: Session = Depends(get_db),
+    current_user: CurrentUser = None,
+):
+    """Update a user — requires authentication."""
+    user = db.query(User).filter(User.id == user_id).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+        
+    update_data = user_in.model_dump(exclude_unset=True)
+    if "password" in update_data and update_data["password"]:
+        update_data["hashed_password"] = get_password_hash(update_data.pop("password"))
+    elif "password" in update_data:
+        update_data.pop("password")
+        
+    for field, value in update_data.items():
+        setattr(user, field, value)
+        
+    db.commit()
+    db.refresh(user)
     return user
