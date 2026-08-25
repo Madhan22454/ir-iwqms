@@ -119,7 +119,7 @@ def seed_all():
     # ─────────────────────────────────────────────────────────────────────────
     # STATIONS
     # ─────────────────────────────────────────────────────────────────────────
-        stations_data = [
+    stations_data = [
         dict(name="Chennai Central", code="MAS", cat="NSG1", div="MAS", lat=11.3315, lng=77.8932),
         dict(name="Chennai egmore", code="MS", cat="NSG 1", div="SA", lat=9.429, lng=79.4451),
         dict(name="Tambaram", code="TBM", cat="NSG1", div="CBE", lat=10.6337, lng=78.2803),
