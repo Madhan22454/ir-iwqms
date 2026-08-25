@@ -23,7 +23,7 @@ def create_zone(zone: ZoneCreate, db: Session = Depends(get_db)):
     return db_zone
 
 @router.get("/zones/", response_model=List[ZoneSchema])
-def read_zones(skip: int = 0, limit: int = 100, db: Session = Depends(get_db), current_user: CurrentUser = None):
+def read_zones(skip: int = 0, limit: int = 1000, db: Session = Depends(get_db), current_user: CurrentUser = None):
     q = db.query(Zone)
     if current_user and current_user.role == "ZONAL_ADMIN" and current_user.zone_id:
         q = q.filter(Zone.id == current_user.zone_id)
@@ -39,7 +39,7 @@ def create_division(division: DivisionCreate, db: Session = Depends(get_db)):
     return db_div
 
 @router.get("/divisions/", response_model=List[DivisionSchema])
-def read_divisions(skip: int = 0, limit: int = 100, db: Session = Depends(get_db), current_user: CurrentUser = None):
+def read_divisions(skip: int = 0, limit: int = 1000, db: Session = Depends(get_db), current_user: CurrentUser = None):
     q = db.query(Division)
     if current_user:
         if current_user.role == "ZONAL_ADMIN" and current_user.zone_id:
@@ -58,7 +58,7 @@ def create_station(station: StationCreate, db: Session = Depends(get_db)):
     return db_station
 
 @router.get("/stations/", response_model=List[StationSchema])
-def read_stations(skip: int = 0, limit: int = 100, db: Session = Depends(get_db), current_user: CurrentUser = None):
+def read_stations(skip: int = 0, limit: int = 1000, db: Session = Depends(get_db), current_user: CurrentUser = None):
     q = db.query(Station)
     if current_user:
         if current_user.role == "ZONAL_ADMIN" and current_user.zone_id:
@@ -79,7 +79,7 @@ def create_water_source(source: WaterSourceCreate, db: Session = Depends(get_db)
     return db_source
 
 @router.get("/water-sources/", response_model=List[WaterSourceSchema])
-def read_water_sources(skip: int = 0, limit: int = 100, db: Session = Depends(get_db), current_user: CurrentUser = None):
+def read_water_sources(skip: int = 0, limit: int = 1000, db: Session = Depends(get_db), current_user: CurrentUser = None):
     q = db.query(WaterSource)
     if current_user:
         if current_user.role == "ZONAL_ADMIN" and current_user.zone_id:
