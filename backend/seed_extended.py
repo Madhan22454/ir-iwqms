@@ -11,6 +11,8 @@ os.environ.setdefault("PYTHONIOENCODING", "utf-8")
 from database import SessionLocal, engine, Base
 from models import user, hierarchy, master, lab, alert, workflow, audit  # noqa
 
+# Drop existing tables to ensure a clean slate (removes old zones/stations)
+Base.metadata.drop_all(bind=engine)
 Base.metadata.create_all(bind=engine)
 db = SessionLocal()
 
