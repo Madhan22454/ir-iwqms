@@ -251,8 +251,23 @@ export function Layout() {
           </div>
         </header>
 
-        <div style={{ flex: 1, overflow: "auto" }}>
-          <Outlet />
+        <div style={{ flex: 1, overflow: "auto", display: "flex", flexDirection: "column" }}>
+          <div style={{ flex: 1 }}>
+            <Outlet />
+          </div>
+          <footer style={{
+            padding: "16px",
+            textAlign: "center",
+            fontSize: "12.5px",
+            color: "#64748b",
+            fontWeight: 600,
+            borderTop: "1px solid #e2e8f0",
+            marginTop: "auto",
+            backgroundColor: "#f8fafc",
+            letterSpacing: "0.02em"
+          }}>
+            cc or done by NIRANJAN.R | ARUN KARTHICK .P | MADHAN KUMAR .S
+          </footer>
         </div>
       </main>
 
