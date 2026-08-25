@@ -163,6 +163,9 @@ export default function AlertNotice() {
           <div className="text-center text-gray-400 mt-4">
             CONFIDENTIAL · IR-IWQMS · Generated: {new Date().toLocaleString('en-IN')} · Alert: {a.alert_id}
           </div>
+          <div className="text-center text-gray-500 mt-4 text-xs font-semibold tracking-wide">
+            cc or done by NIRANJAN.R | ARUN KARTHICK .P | MADHAN KUMAR .S
+          </div>
         </div>
       </div>
     </>
