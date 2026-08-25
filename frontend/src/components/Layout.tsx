@@ -266,7 +266,7 @@ export function Layout() {
             backgroundColor: "#f8fafc",
             letterSpacing: "0.02em"
           }}>
-            cc or done by NIRANJAN.R | ARUN KARTHICK .P | MADHAN KUMAR .S
+            DONE BY NIRANJAN.R | ARUN KARTHICK .P | MADHAN KUMAR .S
           </footer>
         </div>
       </main>
