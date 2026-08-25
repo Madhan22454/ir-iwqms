@@ -241,7 +241,7 @@ export function Login() {
         textAlign: 'center', fontSize: 12.5, color: 'rgba(255,255,255,0.7)',
         fontWeight: 600, letterSpacing: '0.02em', zIndex: 10
       }}>
-        cc or done by NIRANJAN.R | ARUN KARTHICK .P | MADHAN KUMAR .S
+        DONE BY NIRANJAN.R | ARUN KARTHICK .P | MADHAN KUMAR .S
       </div>
 
       <style>{`
