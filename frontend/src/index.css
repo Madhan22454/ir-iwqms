@@ -56,3 +56,51 @@ body {
   border: none !important;
   padding: 0 !important;
 }
+
+/* Custom Marker Cluster Styling */
+.custom-cluster {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  font-weight: 800;
+  font-size: 13px;
+  color: #1e293b;
+  background: white;
+  border: 3px solid white;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15), 0 2px 4px rgba(0,0,0,0.1);
+  transition: transform 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275), box-shadow 0.2s ease;
+}
+
+.custom-cluster:hover {
+  transform: scale(1.15);
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.2);
+  z-index: 1000 !important;
+}
+
+.cluster-compliant { border-color: #16a34a; background: #f0fdf4; color: #16a34a; }
+.cluster-warning { border-color: #d97706; background: #fffbeb; color: #d97706; }
+.cluster-danger { border-color: #dc2626; background: #fef2f2; color: #dc2626; }
+.cluster-critical { 
+  border-color: #991b1b; 
+  background: #fef2f2; 
+  color: #991b1b; 
+  animation: pulse-border 2s infinite; 
+}
+
+/* Animations */
+@keyframes pulse-border {
+  0% { box-shadow: 0 0 0 0 rgba(220, 38, 38, 0.6); }
+  70% { box-shadow: 0 0 0 10px rgba(220, 38, 38, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(220, 38, 38, 0); }
+}
+
+@keyframes map-fly-in {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* Fix for z-index of leaflet controls vs floating panels */
+.leaflet-top, .leaflet-bottom {
+  z-index: 400 !important;
+}
