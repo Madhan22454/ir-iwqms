@@ -225,34 +225,51 @@ export function Layout() {
       <main style={{ flex: 1, display: "flex", flexDirection: "column", overflow: "hidden" }}>
         {/* Top bar */}
         <header style={{
-          height: 56, background: "white",
+          height: 64, background: "white",
           borderBottom: "1px solid #e2e8f0",
-          display: "flex", alignItems: "center", padding: "0 24px",
+          display: "flex", alignItems: "center", padding: "0 28px",
           boxShadow: "0 1px 3px rgba(0,0,0,0.03)",
           flexShrink: 0,
         }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-            <span style={{ fontSize: 11, fontWeight: 800, padding: "3px 8px", borderRadius: 4, background: "#1e3a8a", color: "white", letterSpacing: "0.05em" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+            <span style={{ 
+              fontSize: 11, fontWeight: 800, padding: "4px 10px", borderRadius: 6, 
+              background: "linear-gradient(135deg, #1e3a8a, #2563eb)", 
+              color: "white", letterSpacing: "0.06em", boxShadow: "0 2px 4px rgba(37,99,235,0.2)" 
+            }}>
               IR-SURVEILLANCE
             </span>
-            <h1 style={{ fontSize: 14.5, fontWeight: 700, color: "#0f172a", margin: 0, letterSpacing: "-0.2px" }}>
-              Integrated Water Quality Monitoring & Surveillance System
+            <h1 style={{ fontSize: 16, fontWeight: 800, color: "#0f172a", margin: 0, letterSpacing: "-0.3px" }}>
+              Integrated Water Quality Monitoring System
             </h1>
           </div>
-          <div style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: 16 }}>
+          
+          <div style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: 24 }}>
+            {/* Mock Search */}
+            <div style={{ 
+              display: "flex", alignItems: "center", gap: 8, 
+              background: "#f1f5f9", padding: "6px 14px", borderRadius: 20,
+              border: "1px solid #e2e8f0"
+            }}>
+              <span style={{ fontSize: 13, color: "#64748b", fontWeight: 500 }}>Search station or source ID...</span>
+              <div style={{ background: "white", padding: "2px 6px", borderRadius: 4, fontSize: 10, fontWeight: 700, color: "#94a3b8", border: "1px solid #e2e8f0" }}>Ctrl K</div>
+            </div>
+
+            <div style={{ width: 1, height: 24, background: "#e2e8f0" }} />
+
             <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
               <div style={{
                 width: 8, height: 8, borderRadius: "50%", background: "#16a34a",
-                boxShadow: "0 0 6px #16a34a",
+                boxShadow: "0 0 8px #16a34a",
                 animation: "pulse 2s ease-in-out infinite",
               }} />
-              <span style={{ fontSize: 12, color: "#475569", fontWeight: 600 }}>Backend Online</span>
+              <span style={{ fontSize: 12.5, color: "#334155", fontWeight: 700 }}>Live Feed</span>
             </div>
           </div>
         </header>
 
-        <div style={{ flex: 1, overflow: "auto", display: "flex", flexDirection: "column" }}>
-          <div style={{ flex: 1 }}>
+        <div style={{ flex: 1, overflow: "hidden", display: "flex", flexDirection: "column", position: 'relative' }}>
+          <div style={{ flex: 1, height: '100%', overflow: 'hidden' }}>
             <Outlet />
           </div>
           <footer style={{
