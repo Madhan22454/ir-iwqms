@@ -2,8 +2,8 @@ import { useState, useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import axios from 'axios';
 import {
-  MapPin, AlertTriangle, ShieldCheck, ShieldAlert,
-  Droplets, Building2, TrendingUp, Filter, Search,
+  AlertTriangle, ShieldCheck, ShieldAlert,
+  Droplets, Filter, Search,
   ChevronRight, X, Clock, FlaskConical, ClipboardList, RefreshCw
 } from 'lucide-react';
 
@@ -76,12 +76,8 @@ export function Dashboard() {
   const [leafletLoaded, setLeafletLoaded] = useState(false);
   
   // Data
-  const [zones, setZones] = useState<any[]>([]);
-  const [divisions, setDivisions] = useState<any[]>([]);
-  const [stations, setStations] = useState<any[]>([]);
   const [waterSources, setWaterSources] = useState<any[]>([]);
   const [alertSummary, setAlertSummary] = useState<any>(null);
-  const [caCount, setCaCount] = useState(0);
   
   // State
   const [selectedSource, setSelectedSource] = useState<any>(null);
@@ -107,21 +103,14 @@ export function Dashboard() {
 
   const fetchData = async () => {
     try {
-      const [z, d, s, ws, summary, cas] = await Promise.all([
-        axios.get(`${API_URL}/hierarchy/zones/`),
-        axios.get(`${API_URL}/hierarchy/divisions/`),
+      const [s, ws, summary] = await Promise.all([
         axios.get(`${API_URL}/hierarchy/stations/`),
         axios.get(`${API_URL}/hierarchy/water-sources/`),
         axios.get(`${API_URL}/alerts/summary`),
-        axios.get(`${API_URL}/workflow/corrective-actions/?status=OPEN`),
       ]);
-      
-      setZones(z.data);
-      setDivisions(d.data);
       
       const stnMap: Record<number, any> = {};
       s.data.forEach((stn: any) => { stnMap[stn.id] = stn; });
-      setStations(s.data);
       
       const mappedSources = ws.data.map((source: any) => ({
         ...source,
@@ -130,7 +119,6 @@ export function Dashboard() {
       setWaterSources(mappedSources);
       
       setAlertSummary(summary.data);
-      setCaCount(cas.data.length);
     } catch (err) {
       console.error('Failed to load dashboard data', err);
     } finally {

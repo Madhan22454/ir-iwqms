@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import axios from 'axios';
 import {
   ShieldCheck, ShieldAlert, AlertTriangle, Clock,
-  Search, Filter, MapPin, QrCode, FlaskConical, X, ChevronLeft, ChevronRight
+  Search, Filter, QrCode, FlaskConical, X, ChevronLeft, ChevronRight
 } from 'lucide-react';
 
 import { API_URL } from '../config/api';
@@ -21,7 +21,6 @@ const DEFAULT_STATUS = { icon: AlertTriangle, bg: '#f8fafc', text: '#64748b', bo
 
 export function HealthCard() {
   const [sources, setSources] = useState<any[]>([]);
-  const [stations, setStations] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   
   // Table State
@@ -49,7 +48,6 @@ export function HealthCard() {
           station: stationMap[ws.station_id] || {}
         }));
         
-        setStations(stnRes.data);
         setSources(enriched);
       } catch (err) {
         console.error('Failed to load registry data', err);
