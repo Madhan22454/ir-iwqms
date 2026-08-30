@@ -1,9 +1,9 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import axios from 'axios';
 import {
-  ShieldCheck, ShieldAlert, AlertTriangle, Clock, Droplets,
-  MapPin, QrCode, FlaskConical, X
+  ShieldCheck, ShieldAlert, AlertTriangle, Clock,
+  Search, Filter, MapPin, QrCode, FlaskConical, X, ChevronLeft, ChevronRight
 } from 'lucide-react';
 
 import { API_URL } from '../config/api';
@@ -19,332 +19,313 @@ const STATUS_CONFIG: Record<string, { icon: any; bg: string; text: string; borde
 
 const DEFAULT_STATUS = { icon: AlertTriangle, bg: '#f8fafc', text: '#64748b', border: '#e2e8f0', label: 'Unknown' };
 
-interface Station {
-  id: number;
-  name: string;
-  code: string;
-  category: string;
-  division_id: number;
-}
-
-interface HealthCardData {
-  water_source_id: number;
-  source_id_code: string;
-  source_type?: string;
-  capacity?: string;
-  areas_supplied?: string;
-  population_served?: number;
-  disinfection_method?: string;
-  residual_chlorine_last?: number;
-  consecutive_failures?: number;
-  total_failures?: number;
-  station_name: string;
-  division_name: string;
-  zone_name: string;
-  status: string;
-  last_bacteriological_date: string | null;
-  next_bacteriological_due: string | null;
-  last_chemical_date: string | null;
-  next_chemical_due: string | null;
-  last_disinfection_date: string | null;
-  next_disinfection_due: string | null;
-  active_alerts_count?: number;
-  latest_alert_id?: string | null;
-}
-
-function DateRow({ label, last, next }: { label: string; last: string | null; next: string | null }) {
-  const isOverdue = next && new Date(next) < new Date();
-  return (
-    <div style={{ borderBottom: '1px solid #f1f5f9', paddingBottom: 8, marginBottom: 8 }}>
-      <div style={{ fontSize: 11, fontWeight: 600, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 3 }}>
-        {label}
-      </div>
-      <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8 }}>
-        <span style={{ fontSize: 12, color: '#64748b' }}>
-          Last: {last ? new Date(last).toLocaleDateString('en-IN') : '—'}
-        </span>
-        <span style={{
-          fontSize: 12, fontWeight: 600,
-          color: isOverdue ? '#dc2626' : '#374151',
-          display: 'flex', alignItems: 'center', gap: 4,
-        }}>
-          {isOverdue && <Clock size={11} />}
-          Due: {next ? new Date(next).toLocaleDateString('en-IN') : '—'}
-        </span>
-      </div>
-    </div>
-  );
-}
-
 export function HealthCard() {
-  const [stations, setStations] = useState<Station[]>([]);
-  const [selectedStationId, setSelectedStationId] = useState<string>('');
-  const [data, setData] = useState<HealthCardData[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [stationsLoading, setStationsLoading] = useState(true);
-  const [qrModalItem, setQrModalItem] = useState<HealthCardData | null>(null);
+  const [sources, setSources] = useState<any[]>([]);
+  const [stations, setStations] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  
+  // Table State
+  const [searchTerm, setSearchTerm] = useState('');
+  const [statusFilter, setStatusFilter] = useState('ALL');
+  const [typeFilter, setTypeFilter] = useState('ALL');
+  const [currentPage, setCurrentPage] = useState(1);
+  const rowsPerPage = 12;
 
-  // Load station list on mount
+  const [qrModalItem, setQrModalItem] = useState<any | null>(null);
+
   useEffect(() => {
-    axios.get(`${API_URL}/hierarchy/stations/`)
-      .then(res => {
-        setStations(res.data);
-        if (res.data.length > 0) {
-          setSelectedStationId(String(res.data[0].id));
-        }
-      })
-      .catch(err => console.error('Failed to load stations:', err))
-      .finally(() => setStationsLoading(false));
+    const fetchData = async () => {
+      try {
+        const [wsRes, stnRes] = await Promise.all([
+          axios.get(`${API_URL}/hierarchy/water-sources/`),
+          axios.get(`${API_URL}/hierarchy/stations/`)
+        ]);
+        
+        const stationMap: Record<number, any> = {};
+        stnRes.data.forEach((s: any) => { stationMap[s.id] = s; });
+        
+        const enriched = wsRes.data.map((ws: any) => ({
+          ...ws,
+          station: stationMap[ws.station_id] || {}
+        }));
+        
+        setStations(stnRes.data);
+        setSources(enriched);
+      } catch (err) {
+        console.error('Failed to load registry data', err);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchData();
   }, []);
 
-  // Fetch health cards when station selection changes
+  // Filter & Search Logic
+  const filteredData = useMemo(() => {
+    return sources.filter(item => {
+      const matchesSearch = 
+        item.source_id_code?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        item.station?.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        item.station?.code?.toLowerCase().includes(searchTerm.toLowerCase());
+        
+      const matchesStatus = statusFilter === 'ALL' || item.current_status === statusFilter;
+      const matchesType = typeFilter === 'ALL' || item.source_type === typeFilter;
+      
+      return matchesSearch && matchesStatus && matchesType;
+    });
+  }, [sources, searchTerm, statusFilter, typeFilter]);
+
+  // Pagination Logic
+  const totalPages = Math.ceil(filteredData.length / rowsPerPage);
+  const paginatedData = useMemo(() => {
+    const start = (currentPage - 1) * rowsPerPage;
+    return filteredData.slice(start, start + rowsPerPage);
+  }, [filteredData, currentPage]);
+
+  // Reset page when filters change
   useEffect(() => {
-    if (!selectedStationId) return;
-    fetchHealthCards();
-  }, [selectedStationId]);
+    setCurrentPage(1);
+  }, [searchTerm, statusFilter, typeFilter]);
 
-  const fetchHealthCards = async () => {
-    if (!selectedStationId) return;
-    setLoading(true);
-    try {
-      const res = await axios.get(`${API_URL}/health/healthcard/station/${selectedStationId}`);
-      setData(res.data);
-    } catch (error) {
-      console.error('Error fetching health cards:', error);
-      setData([]);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const selectedStation = stations.find(s => String(s.id) === selectedStationId);
+  const uniqueTypes = useMemo(() => {
+    const types = new Set(sources.map(s => s.source_type).filter(Boolean));
+    return Array.from(types);
+  }, [sources]);
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 24, padding: '24px 28px' }}>
-      {/* Header */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: 16 }}>
-        <div>
-          <h2 style={{ fontSize: 24, fontWeight: 800, color: '#0f172a', margin: 0, letterSpacing: '-0.5px' }}>
-            Water Source Health Cards
-          </h2>
-          {selectedStation && (
-            <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 6 }}>
-              <MapPin size={14} color="#64748b" />
-              <p style={{ fontSize: 13.5, color: '#64748b', margin: 0 }}>
-                {selectedStation.name} ({selectedStation.code}) · Category: {selectedStation.category}
-              </p>
+    <div style={{ display: 'flex', flexDirection: 'column', height: '100%', background: '#f8fafc' }}>
+      
+      {/* Header & Controls */}
+      <div style={{ padding: '24px 28px', background: 'white', borderBottom: '1px solid #e2e8f0' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: 16 }}>
+          <div>
+            <h2 style={{ fontSize: 24, fontWeight: 800, color: '#0f172a', margin: 0, letterSpacing: '-0.5px' }}>
+              Water Source Registry
+            </h2>
+            <p style={{ fontSize: 13.5, color: '#64748b', marginTop: 4 }}>
+              Enterprise view of all monitored water sources across the network
+            </p>
+          </div>
+          
+          <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
+            {/* Search */}
+            <div style={{ position: 'relative' }}>
+              <Search size={16} color="#94a3b8" style={{ position: 'absolute', left: 12, top: 11 }} />
+              <input 
+                type="text" 
+                placeholder="Search ID, Station..." 
+                value={searchTerm}
+                onChange={e => setSearchTerm(e.target.value)}
+                style={{
+                  padding: '9px 12px 9px 36px', borderRadius: 8, border: '1px solid #cbd5e1',
+                  fontSize: 13, outline: 'none', width: 220, fontFamily: 'inherit'
+                }}
+              />
+            </div>
+            
+            {/* Status Filter */}
+            <div style={{ position: 'relative' }}>
+              <Filter size={16} color="#94a3b8" style={{ position: 'absolute', left: 12, top: 11 }} />
+              <select 
+                value={statusFilter}
+                onChange={e => setStatusFilter(e.target.value)}
+                style={{
+                  padding: '9px 12px 9px 36px', borderRadius: 8, border: '1px solid #cbd5e1',
+                  fontSize: 13, outline: 'none', background: 'white', cursor: 'pointer', fontFamily: 'inherit'
+                }}
+              >
+                <option value="ALL">All Statuses</option>
+                <option value="COMPLIANT">Compliant</option>
+                <option value="UNFIT">Unfit</option>
+                <option value="UNSATISFACTORY">Unsatisfactory</option>
+                <option value="OVERDUE">Overdue</option>
+                <option value="PERSISTENT_FAILURE">Persistent Failure</option>
+              </select>
+            </div>
+
+            {/* Type Filter */}
+            <div style={{ position: 'relative' }}>
+              <Filter size={16} color="#94a3b8" style={{ position: 'absolute', left: 12, top: 11 }} />
+              <select 
+                value={typeFilter}
+                onChange={e => setTypeFilter(e.target.value)}
+                style={{
+                  padding: '9px 12px 9px 36px', borderRadius: 8, border: '1px solid #cbd5e1',
+                  fontSize: 13, outline: 'none', background: 'white', cursor: 'pointer', fontFamily: 'inherit'
+                }}
+              >
+                <option value="ALL">All Source Types</option>
+                {uniqueTypes.map((t: any) => (
+                  <option key={t} value={t}>{t}</option>
+                ))}
+              </select>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Main Table Area */}
+      <div style={{ flex: 1, padding: '24px 28px', overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
+        <div style={{ 
+          background: 'white', borderRadius: 12, border: '1px solid #e2e8f0', 
+          boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.05)',
+          display: 'flex', flexDirection: 'column', flex: 1, overflow: 'hidden'
+        }}>
+          
+          <div style={{ overflowX: 'auto', flex: 1 }}>
+            <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
+              <thead style={{ position: 'sticky', top: 0, background: '#f8fafc', zIndex: 10 }}>
+                <tr>
+                  {['Source ID', 'Station', 'Type', 'Disinfection', 'Status', 'Last Sample', 'Next Due', 'Actions'].map(h => (
+                    <th key={h} style={{
+                      padding: '14px 20px', fontSize: 11.5, fontWeight: 800, color: '#475569',
+                      textTransform: 'uppercase', letterSpacing: '0.05em', borderBottom: '1px solid #e2e8f0'
+                    }}>{h}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {loading ? (
+                  <tr>
+                    <td colSpan={8} style={{ textAlign: 'center', padding: '60px' }}>
+                      <div style={{ display: 'inline-block', width: 32, height: 32, border: '3px solid #e2e8f0', borderTopColor: '#2563eb', borderRadius: '50%', animation: 'spin 1s linear infinite' }} />
+                    </td>
+                  </tr>
+                ) : paginatedData.length === 0 ? (
+                  <tr>
+                    <td colSpan={8} style={{ textAlign: 'center', padding: '60px', color: '#64748b' }}>
+                      No water sources found matching your criteria.
+                    </td>
+                  </tr>
+                ) : (
+                  paginatedData.map((row, idx) => {
+                    const cfg = STATUS_CONFIG[row.current_status] || DEFAULT_STATUS;
+                    const StatusIcon = cfg.icon;
+                    const isDue = (dateStr: string) => dateStr && new Date(dateStr) < new Date();
+                    
+                    return (
+                      <tr key={row.id} style={{ borderBottom: '1px solid #f1f5f9', background: idx % 2 === 0 ? 'white' : '#fafafa', transition: 'background 0.15s' }}
+                          onMouseEnter={e => (e.currentTarget.style.background = '#f0f9ff')}
+                          onMouseLeave={e => (e.currentTarget.style.background = idx % 2 === 0 ? 'white' : '#fafafa')}>
+                        
+                        <td style={{ padding: '14px 20px', fontWeight: 800, color: '#0f172a', fontSize: 13 }}>
+                          {row.source_id_code}
+                        </td>
+                        
+                        <td style={{ padding: '14px 20px' }}>
+                          <div style={{ fontSize: 13, fontWeight: 700, color: '#334155' }}>{row.station?.name || '—'}</div>
+                          <div style={{ fontSize: 11, color: '#64748b', marginTop: 2 }}>{row.station?.code} · {row.station?.division?.name}</div>
+                        </td>
+                        
+                        <td style={{ padding: '14px 20px', fontSize: 13, color: '#475569', fontWeight: 500 }}>
+                          {row.source_type || '—'}
+                        </td>
+                        
+                        <td style={{ padding: '14px 20px', fontSize: 13, color: '#475569', fontWeight: 500 }}>
+                          {row.disinfection_method || '—'}
+                        </td>
+                        
+                        <td style={{ padding: '14px 20px' }}>
+                          <span style={{
+                            display: 'inline-flex', alignItems: 'center', gap: 6,
+                            padding: '4px 10px', borderRadius: 20, fontSize: 11, fontWeight: 800,
+                            background: cfg.bg, color: cfg.text, border: `1px solid ${cfg.border}`
+                          }}>
+                            <StatusIcon size={12} />
+                            {cfg.label}
+                          </span>
+                        </td>
+                        
+                        <td style={{ padding: '14px 20px', fontSize: 12.5, color: '#475569' }}>
+                          {row.last_bacteriological_sample_date ? new Date(row.last_bacteriological_sample_date).toLocaleDateString() : '—'}
+                        </td>
+                        
+                        <td style={{ padding: '14px 20px', fontSize: 12.5 }}>
+                          {row.next_bacteriological_sample_due ? (
+                            <span style={{ 
+                              color: isDue(row.next_bacteriological_sample_due) ? '#dc2626' : '#475569', 
+                              fontWeight: isDue(row.next_bacteriological_sample_due) ? 700 : 500,
+                              display: 'flex', alignItems: 'center', gap: 4
+                            }}>
+                              {isDue(row.next_bacteriological_sample_due) && <Clock size={12} />}
+                              {new Date(row.next_bacteriological_sample_due).toLocaleDateString()}
+                            </span>
+                          ) : '—'}
+                        </td>
+                        
+                        <td style={{ padding: '14px 20px' }}>
+                          <div style={{ display: 'flex', gap: 8 }}>
+                            <button 
+                              onClick={() => setQrModalItem(row)}
+                              style={{ background: '#f1f5f9', border: 'none', padding: 6, borderRadius: 6, cursor: 'pointer', color: '#475569' }}
+                              title="View QR"
+                            >
+                              <QrCode size={16} />
+                            </button>
+                            <Link 
+                              to={`/lab/result-entry?source_id=${row.id}`} 
+                              style={{ background: '#eff6ff', border: 'none', padding: 6, borderRadius: 6, cursor: 'pointer', color: '#2563eb', textDecoration: 'none' }}
+                              title="Enter Lab Result"
+                            >
+                              <FlaskConical size={16} />
+                            </Link>
+                          </div>
+                        </td>
+                        
+                      </tr>
+                    )
+                  })
+                )}
+              </tbody>
+            </table>
+          </div>
+
+          {/* Pagination Footer */}
+          {!loading && (
+            <div style={{ 
+              padding: '12px 20px', borderTop: '1px solid #e2e8f0', background: '#f8fafc',
+              display: 'flex', alignItems: 'center', justifyContent: 'space-between'
+            }}>
+              <div style={{ fontSize: 13, color: '#64748b', fontWeight: 500 }}>
+                Showing <span style={{ fontWeight: 700, color: '#0f172a' }}>{filteredData.length > 0 ? (currentPage - 1) * rowsPerPage + 1 : 0}</span> to <span style={{ fontWeight: 700, color: '#0f172a' }}>{Math.min(currentPage * rowsPerPage, filteredData.length)}</span> of <span style={{ fontWeight: 700, color: '#0f172a' }}>{filteredData.length}</span> results
+              </div>
+              
+              <div style={{ display: 'flex', gap: 8 }}>
+                <button 
+                  onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                  disabled={currentPage === 1}
+                  style={{ 
+                    display: 'flex', alignItems: 'center', padding: '6px 12px', borderRadius: 6,
+                    background: currentPage === 1 ? '#f1f5f9' : 'white', 
+                    border: '1px solid #e2e8f0', color: currentPage === 1 ? '#94a3b8' : '#334155',
+                    cursor: currentPage === 1 ? 'not-allowed' : 'pointer', fontSize: 13, fontWeight: 600
+                  }}
+                >
+                  <ChevronLeft size={16} style={{ marginRight: 4 }} /> Previous
+                </button>
+                <button 
+                  onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                  disabled={currentPage === totalPages || totalPages === 0}
+                  style={{ 
+                    display: 'flex', alignItems: 'center', padding: '6px 12px', borderRadius: 6,
+                    background: currentPage === totalPages || totalPages === 0 ? '#f1f5f9' : 'white', 
+                    border: '1px solid #e2e8f0', color: currentPage === totalPages || totalPages === 0 ? '#94a3b8' : '#334155',
+                    cursor: currentPage === totalPages || totalPages === 0 ? 'not-allowed' : 'pointer', fontSize: 13, fontWeight: 600
+                  }}
+                >
+                  Next <ChevronRight size={16} style={{ marginLeft: 4 }} />
+                </button>
+              </div>
             </div>
           )}
         </div>
-
-        {/* Station selector */}
-        <div style={{
-          background: 'white', borderRadius: 12, padding: '12px 18px',
-          boxShadow: '0 1px 4px rgba(0,0,0,0.06)', border: '1px solid #e2e8f0',
-          display: 'flex', alignItems: 'center', gap: 10,
-        }}>
-          <MapPin size={16} color="#64748b" />
-          <label style={{ fontSize: 13, fontWeight: 600, color: '#374151', whiteSpace: 'nowrap' }}>
-            Station:
-          </label>
-          {stationsLoading ? (
-            <span style={{ fontSize: 13, color: '#94a3b8' }}>Loading...</span>
-          ) : (
-            <select
-              id="stationSelect"
-              value={selectedStationId}
-              onChange={e => setSelectedStationId(e.target.value)}
-              style={{
-                border: 'none', outline: 'none', fontSize: 13.5, fontWeight: 700,
-                color: '#1e3a8a', background: 'transparent', cursor: 'pointer',
-                fontFamily: 'inherit', minWidth: 200,
-              }}
-            >
-              {stations.map(s => (
-                <option key={s.id} value={s.id}>
-                  {s.name} ({s.code})
-                </option>
-              ))}
-            </select>
-          )}
-        </div>
       </div>
 
-      {/* Cards Grid */}
-      {loading ? (
-        <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: 240 }}>
-          <div style={{
-            width: 44, height: 44, border: '4px solid #e2e8f0',
-            borderTopColor: '#2563eb', borderRadius: '50%',
-            animation: 'spin 0.8s linear infinite',
-          }} />
-          <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
-        </div>
-      ) : data.length === 0 ? (
-        <div style={{
-          background: 'white', borderRadius: 16, padding: '60px 24px',
-          textAlign: 'center', color: '#94a3b8',
-          border: '1px solid #f1f5f9',
-          boxShadow: '0 1px 4px rgba(0,0,0,0.04)',
-        }}>
-          <Droplets size={40} color="#cbd5e1" style={{ marginBottom: 12 }} />
-          <p style={{ fontSize: 15, fontWeight: 600, color: '#94a3b8', margin: 0 }}>
-            No water sources found for this station.
-          </p>
-        </div>
-      ) : (
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: 20 }}>
-          {data.map((card, idx) => {
-            const cfg = STATUS_CONFIG[card.status] || DEFAULT_STATUS;
-            const StatusIcon = cfg.icon;
-            return (
-              <div key={idx} style={{
-                background: 'white', borderRadius: 16, overflow: 'hidden',
-                boxShadow: '0 1px 4px rgba(0,0,0,0.06), 0 4px 16px rgba(0,0,0,0.04)',
-                border: '1px solid #f1f5f9',
-                display: 'flex', flexDirection: 'column',
-                transition: 'box-shadow 0.2s, transform 0.2s',
-              }}
-                onMouseEnter={e => {
-                  (e.currentTarget).style.boxShadow = '0 8px 30px rgba(0,0,0,0.12)';
-                  (e.currentTarget).style.transform = 'translateY(-3px)';
-                }}
-                onMouseLeave={e => {
-                  (e.currentTarget).style.boxShadow = '0 1px 4px rgba(0,0,0,0.06), 0 4px 16px rgba(0,0,0,0.04)';
-                  (e.currentTarget).style.transform = 'none';
-                }}
-              >
-                {/* Card header */}
-                <div style={{
-                  padding: '16px 20px', background: cfg.bg,
-                  borderBottom: `2px solid ${cfg.border}`,
-                  display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start',
-                }}>
-                  <div>
-                    <div style={{ fontSize: 17, fontWeight: 800, color: '#0f172a', letterSpacing: '-0.3px' }}>
-                      {card.source_id_code}
-                    </div>
-                    <div style={{ fontSize: 12, color: '#64748b', marginTop: 2, display: 'flex', alignItems: 'center', gap: 4 }}>
-                      <MapPin size={11} />
-                      {card.station_name} · {card.division_name}
-                    </div>
-                  </div>
-                  <div style={{ display: 'flex', gap: 6 }}>
-                    <button
-                      onClick={() => setQrModalItem(card)}
-                      title="View QR Code"
-                      style={{
-                        background: 'white', borderRadius: 8, padding: 6, border: `1px solid ${cfg.border}`,
-                        cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
-                      }}
-                    >
-                      <QrCode size={16} color="#475569" />
-                    </button>
-                    <div style={{
-                      background: 'white', borderRadius: 8, padding: 6,
-                      border: `1px solid ${cfg.border}`,
-                      display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    }}>
-                      <StatusIcon size={18} color={cfg.text} />
-                    </div>
-                  </div>
-                </div>
-
-                {/* Status + Failure Count */}
-                <div style={{ padding: '12px 20px 0', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
-                  <span style={{
-                    display: 'inline-flex', alignItems: 'center', gap: 6,
-                    padding: '4px 10px', borderRadius: 20,
-                    fontSize: 11, fontWeight: 700, letterSpacing: '0.04em',
-                    background: cfg.bg, color: cfg.text,
-                    border: `1px solid ${cfg.border}`,
-                  }}>
-                    <StatusIcon size={11} />
-                    {cfg.label}
-                  </span>
-
-                  {card.consecutive_failures && card.consecutive_failures > 0 ? (
-                    <span style={{
-                      fontSize: 10.5, fontWeight: 800, color: '#b91c1c',
-                      background: '#fef2f2', padding: '2px 8px', borderRadius: 6, border: '1px solid #fecaca',
-                    }}>
-                      ⚠ {card.consecutive_failures} Failure{card.consecutive_failures > 1 ? 's' : ''}
-                    </span>
-                  ) : null}
-                </div>
-
-                {/* Source Metadata */}
-                <div style={{ padding: '12px 20px 0', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, fontSize: 12 }}>
-                  <div>
-                    <span style={{ color: '#94a3b8', fontSize: 11, display: 'block', fontWeight: 600 }}>TYPE</span>
-                    <span style={{ color: '#334155', fontWeight: 600 }}>{card.source_type || '—'}</span>
-                  </div>
-                  <div>
-                    <span style={{ color: '#94a3b8', fontSize: 11, display: 'block', fontWeight: 600 }}>CAPACITY</span>
-                    <span style={{ color: '#334155', fontWeight: 600 }}>{card.capacity || '—'}</span>
-                  </div>
-                  <div>
-                    <span style={{ color: '#94a3b8', fontSize: 11, display: 'block', fontWeight: 600 }}>DISINFECTION</span>
-                    <span style={{ color: '#334155', fontWeight: 600 }}>{card.disinfection_method || '—'}</span>
-                  </div>
-                  <div>
-                    <span style={{ color: '#94a3b8', fontSize: 11, display: 'block', fontWeight: 600 }}>POPULATION</span>
-                    <span style={{ color: '#334155', fontWeight: 600 }}>
-                      {card.population_served ? `${card.population_served.toLocaleString()}` : '—'}
-                    </span>
-                  </div>
-                </div>
-
-                {/* Date rows */}
-                <div style={{ padding: '14px 20px', flex: 1 }}>
-                  <DateRow
-                    label="Bacteriological Test"
-                    last={card.last_bacteriological_date}
-                    next={card.next_bacteriological_due}
-                  />
-                  <DateRow
-                    label="Chemical Test"
-                    last={card.last_chemical_date}
-                    next={card.next_chemical_due}
-                  />
-                  <DateRow
-                    label="Disinfection"
-                    last={card.last_disinfection_date}
-                    next={card.next_disinfection_due}
-                  />
-                </div>
-
-                {/* Card Footer Actions */}
-                <div style={{
-                  padding: '10px 20px', borderTop: '1px solid #f1f5f9', background: '#f8fafc',
-                  display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                }}>
-                  {card.latest_alert_id ? (
-                    <Link to="/alerts" style={{ fontSize: 11.5, fontWeight: 700, color: '#dc2626', textDecoration: 'none' }}>
-                      🚨 View Alert
-                    </Link>
-                  ) : (
-                    <span style={{ fontSize: 11.5, color: '#64748b' }}>No active alerts</span>
-                  )}
-
-                  <Link to="/lab/result-entry" style={{
-                    fontSize: 11.5, fontWeight: 700, color: '#2563eb', textDecoration: 'none',
-                    display: 'flex', alignItems: 'center', gap: 4,
-                  }}>
-                    <FlaskConical size={12} /> Test Result
-                  </Link>
-                </div>
-              </div>
-            );
-          })}
-        </div>
-      )}
-
-      {/* QR Code Modal */}
+      {/* QR Modal (Kept similar to original but cleaned up) */}
       {qrModalItem && (
         <div style={{
           position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
-          background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(4px)',
+          background: 'rgba(15, 23, 42, 0.7)', backdropFilter: 'blur(4px)',
           display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 100,
         }}>
           <div style={{
@@ -352,47 +333,34 @@ export function HealthCard() {
             textAlign: 'center', boxShadow: '0 20px 40px rgba(0,0,0,0.3)',
           }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-              <div style={{ fontSize: 16, fontWeight: 800, color: '#0f172a' }}>Water Source QR Code</div>
+              <div style={{ fontSize: 16, fontWeight: 800, color: '#0f172a' }}>Water Source QR</div>
               <button onClick={() => setQrModalItem(null)} style={{ border: 'none', background: 'transparent', cursor: 'pointer' }}>
                 <X size={20} color="#64748b" />
               </button>
             </div>
 
-            {/* Generated QR visual code */}
             <div style={{
               background: '#f8fafc', border: '2px dashed #cbd5e1', borderRadius: 14,
               padding: '24px', margin: '0 auto 16px', width: 180, height: 180,
               display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 8,
             }}>
               <QrCode size={100} color="#1e3a8a" />
-              <div style={{ fontSize: 10, fontWeight: 800, color: '#64748b', letterSpacing: '0.05em' }}>
-                IR-IWQMS-QR
-              </div>
+              <div style={{ fontSize: 10, fontWeight: 800, color: '#64748b', letterSpacing: '0.05em' }}>IR-IWQMS-QR</div>
             </div>
 
-            <div style={{ fontSize: 16, fontWeight: 800, color: '#1e40af' }}>
-              {qrModalItem.source_id_code}
+            <div style={{ fontSize: 18, fontWeight: 900, color: '#1e40af' }}>{qrModalItem.source_id_code}</div>
+            <div style={{ fontSize: 13, color: '#64748b', marginTop: 4, fontWeight: 500 }}>
+              {qrModalItem.station?.name} · {qrModalItem.station?.division?.name}
             </div>
-            <div style={{ fontSize: 12, color: '#64748b', marginTop: 4 }}>
-              {qrModalItem.station_name} · {qrModalItem.division_name} ({qrModalItem.zone_name})
-            </div>
-            <div style={{
-              fontSize: 11, fontWeight: 700, marginTop: 8,
-              display: 'inline-block', padding: '3px 10px', borderRadius: 12,
-              background: STATUS_CONFIG[qrModalItem.status]?.bg || '#f8fafc',
-              color: STATUS_CONFIG[qrModalItem.status]?.text || '#64748b',
+
+            <button onClick={() => window.print()} style={{
+              width: '100%', padding: '12px', borderRadius: 10, border: 'none',
+              background: 'linear-gradient(135deg, #1e3a8a, #2563eb)', color: 'white', 
+              fontWeight: 800, fontSize: 14, cursor: 'pointer', marginTop: 24,
+              boxShadow: '0 4px 12px rgba(37,99,235,0.3)'
             }}>
-              Status: {qrModalItem.status}
-            </div>
-
-            <div style={{ marginTop: 20 }}>
-              <button onClick={() => window.print()} style={{
-                width: '100%', padding: '10px', borderRadius: 8, border: 'none',
-                background: '#1e3a8a', color: 'white', fontWeight: 700, fontSize: 13, cursor: 'pointer',
-              }}>
-                Print QR Sticker
-              </button>
-            </div>
+              Print QR Label
+            </button>
           </div>
         </div>
       )}
