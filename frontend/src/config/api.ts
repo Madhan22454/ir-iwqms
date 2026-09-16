@@ -1,7 +1,7 @@
 import axios from 'axios';
 
 // Get API base URL from Vite environment variables, fallback to local development URL
-export const API_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000/api/v1';
+export const API_URL = import.meta.env.VITE_API_BASE_URL || `http://${window.location.hostname}:8000/api/v1`;
 
 // Setup global Axios interceptors for handling connection errors
 export const setupAxiosInterceptors = () => {

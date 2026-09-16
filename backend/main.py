@@ -28,6 +28,7 @@ cors_origins = [origin.strip() for origin in settings.ALLOWED_ORIGINS.split(",")
 app.add_middleware(
     CORSMiddleware,
     allow_origins=cors_origins,
+    allow_origin_regex=".*", # Allow any origin to connect (useful for local network/remote testing)
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
