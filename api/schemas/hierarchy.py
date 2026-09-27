@@ -37,6 +37,11 @@ class StationBase(BaseModel):
     gps_lat: Optional[float] = None
     gps_long: Optional[float] = None
     division_id: int
+    
+    source_provenance: Optional[str] = "DEMONSTRATION DATA"
+    dataset_version: Optional[str] = None
+    imported_at: Optional[datetime] = None
+    last_verified_at: Optional[datetime] = None
 
 class StationCreate(StationBase):
     pass
