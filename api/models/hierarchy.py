@@ -33,6 +33,12 @@ class Station(Base):
     category = Column(String)
     gps_lat = Column(Float, nullable=True)
     gps_long = Column(Float, nullable=True)
+    
+    # Provenance
+    source_provenance = Column(String, default="DEMONSTRATION DATA")
+    dataset_version = Column(String, nullable=True)
+    imported_at = Column(DateTime, nullable=True)
+    last_verified_at = Column(DateTime, nullable=True)
 
     division = relationship("Division", back_populates="stations")
     water_sources = relationship("WaterSource", back_populates="station")
