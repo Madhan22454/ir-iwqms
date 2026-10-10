@@ -20,9 +20,9 @@ const STATUS_COLORS: Record<string, string> = {
   UNSATISFACTORY: '#d97706',
   CORRECTIVE_ACTION: '#ea580c',
   UNFIT: '#dc2626',
-  OVERDUE: '#9333ea',
-  PERSISTENT_FAILURE: '#991b1b',
-  DUE: '#2563eb',
+  OVERDUE: '#ea580c', // Orange
+  PERSISTENT_FAILURE: '#991b1b', // Dark Red
+  DUE: '#eab308', // Yellow
 };
 
 const STATUS_BG: Record<string, string> = {

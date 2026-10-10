@@ -234,10 +234,10 @@ export function Layout() {
           <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
             <span style={{ 
               fontSize: 11, fontWeight: 800, padding: "4px 10px", borderRadius: 6, 
-              background: "linear-gradient(135deg, #1e3a8a, #2563eb)", 
-              color: "white", letterSpacing: "0.06em", boxShadow: "0 2px 4px rgba(37,99,235,0.2)" 
+              background: "linear-gradient(135deg, #d97706, #ea580c)", 
+              color: "white", letterSpacing: "0.06em", boxShadow: "0 2px 4px rgba(217,119,6,0.2)" 
             }}>
-              IR-SURVEILLANCE
+              DEMO ENVIRONMENT
             </span>
             <h1 style={{ fontSize: 16, fontWeight: 800, color: "#0f172a", margin: 0, letterSpacing: "-0.3px" }}>
               Integrated Water Quality Monitoring System
@@ -245,15 +245,7 @@ export function Layout() {
           </div>
           
           <div style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: 24 }}>
-            {/* Mock Search */}
-            <div style={{ 
-              display: "flex", alignItems: "center", gap: 8, 
-              background: "#f1f5f9", padding: "6px 14px", borderRadius: 20,
-              border: "1px solid #e2e8f0"
-            }}>
-              <span style={{ fontSize: 13, color: "#64748b", fontWeight: 500 }}>Search station or source ID...</span>
-              <div style={{ background: "white", padding: "2px 6px", borderRadius: 4, fontSize: 10, fontWeight: 700, color: "#94a3b8", border: "1px solid #e2e8f0" }}>Ctrl K</div>
-            </div>
+
 
             <div style={{ width: 1, height: 24, background: "#e2e8f0" }} />
 
