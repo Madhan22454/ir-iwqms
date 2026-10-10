@@ -1,5 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
+from sqlalchemy.exc import IntegrityError
 from typing import List
 
 from api.deps import get_db, CurrentUser
@@ -71,12 +72,51 @@ def read_stations(skip: int = 0, limit: int = 1000, db: Session = Depends(get_db
 
 # --- Water Source ---
 @router.post("/water-sources/", response_model=WaterSourceSchema)
-def create_water_source(source: WaterSourceCreate, db: Session = Depends(get_db)):
+def create_water_source(source: WaterSourceCreate, current_user: CurrentUser, db: Session = Depends(get_db)):
+
+    # Validate that the referenced station exists
+    station = db.query(Station).filter(Station.id == source.station_id).first()
+    if not station:
+        raise HTTPException(status_code=400, detail="Referenced station does not exist")
+        
+    # Enforce role-based scoping
+    if current_user.role == "ZONAL_ADMIN":
+        if not station.division or station.division.zone_id != current_user.zone_id:
+            raise HTTPException(status_code=403, detail="Not authorized to create water sources for this zone")
+    elif current_user.role == "DIVISIONAL_OFFICER":
+        if station.division_id != current_user.division_id:
+            raise HTTPException(status_code=403, detail="Not authorized to create water sources for this division")
+    elif current_user.role == "STATION_INCHARGE":
+        if station.id != current_user.station_id:
+            raise HTTPException(status_code=403, detail="Not authorized to create water sources for this station")
+    elif current_user.role == "CENTRAL_ADMIN":
+        pass
+    else:
+        raise HTTPException(status_code=403, detail="Role not authorized to create water sources")
+
+    # Pre-insert check for friendly error
+    existing = db.query(WaterSource).filter(WaterSource.source_id_code == source.source_id_code).first()
+    if existing:
+        raise HTTPException(status_code=409, detail="Water source with this ID code already exists")
+
     db_source = WaterSource(**source.model_dump())
     db.add(db_source)
-    db.commit()
-    db.refresh(db_source)
-    return db_source
+    try:
+        db.commit()
+        db.refresh(db_source)
+        return db_source
+    except IntegrityError as e:
+        db.rollback()
+        is_unique_violation = False
+        if hasattr(e.orig, "pgcode") and e.orig.pgcode == "23505":
+            is_unique_violation = True
+        elif "unique" in str(e).lower() or "duplicate" in str(e).lower():
+            is_unique_violation = True
+            
+        if is_unique_violation:
+            raise HTTPException(status_code=409, detail="Water source with this ID code already exists")
+        raise HTTPException(status_code=400, detail="Database integrity error")
+
 
 @router.get("/water-sources/", response_model=List[WaterSourceSchema])
 def read_water_sources(skip: int = 0, limit: int = 1000, db: Session = Depends(get_db), current_user: CurrentUser = None):
