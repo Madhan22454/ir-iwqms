@@ -1,4 +1,4 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 from typing import Optional, List
 from datetime import datetime
 
@@ -57,23 +57,30 @@ class WaterSourceBase(BaseModel):
     source_type: Optional[str] = None
     capacity: Optional[str] = None
     areas_supplied: Optional[str] = None
+    population_served: Optional[int] = None
     storage_tank: Optional[str] = None
     treatment_facility: Optional[str] = None
     disinfection_method: Optional[str] = None
+    disinfection_frequency_days: Optional[int] = 30
+    gps_lat: Optional[float] = None
+    gps_long: Optional[float] = None
     station_id: int
-    
-    current_status: str = "COMPLIANT"
-    last_bacteriological_sample_date: Optional[datetime] = None
-    last_chemical_sample_date: Optional[datetime] = None
-    next_bacteriological_sample_due: Optional[datetime] = None
-    next_chemical_sample_due: Optional[datetime] = None
-    last_disinfection_date: Optional[datetime] = None
-    next_disinfection_due: Optional[datetime] = None
 
 class WaterSourceCreate(WaterSourceBase):
     pass
 
 class WaterSource(WaterSourceBase):
     id: int
-    class Config:
-        from_attributes = True
+    current_status: str
+    consecutive_failures: int
+    total_failures: int
+    last_bacteriological_sample_date: Optional[datetime] = None
+    last_chemical_sample_date: Optional[datetime] = None
+    next_bacteriological_sample_due: Optional[datetime] = None
+    next_chemical_sample_due: Optional[datetime] = None
+    last_disinfection_date: Optional[datetime] = None
+    next_disinfection_due: Optional[datetime] = None
+    residual_chlorine_last: Optional[float] = None
+
+    model_config = ConfigDict(from_attributes=True)
+
