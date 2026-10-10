@@ -4,7 +4,7 @@ from pydantic_settings import BaseSettings
 class Settings(BaseSettings):
     PROJECT_NAME: str = "IR-IWQMS"
     API_V1_STR: str = "/api/v1"
-    SECRET_KEY: str = "demo-super-secret-key-12345" # In production, this should be a secure random string
+    SECRET_KEY: str = os.getenv("SECRET_KEY", "demo-super-secret-key-12345") # Must be overridden in production
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 60 * 24 * 8 # 8 days
     
     # Support public deployment or fallback to local SQLite
@@ -17,3 +17,12 @@ class Settings(BaseSettings):
         case_sensitive = True
 
 settings = Settings()
+
+def validate_production_settings(s: Settings):
+    if os.environ.get("VERCEL") == "1":
+        if not s.SECRET_KEY or s.SECRET_KEY == "demo-super-secret-key-12345":
+            raise ValueError("A secure SECRET_KEY must be provided in production")
+        if not s.DATABASE_URL or s.DATABASE_URL.startswith("sqlite"):
+            raise ValueError("A valid PostgreSQL DATABASE_URL must be provided in production")
+
+validate_production_settings(settings)
