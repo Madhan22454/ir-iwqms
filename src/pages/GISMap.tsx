@@ -5,20 +5,8 @@ import {
   Search, X, ChevronRight, AlertTriangle, 
   ShieldAlert, Droplets, Compass,
   RefreshCw, ArrowUpRight, AlertCircle, CheckCircle2, Clock,
-  Maximize2, Minimize2, Map as MapIcon, Train
+  Maximize2, Minimize2, Train, Plus, Minus, RotateCcw
 } from 'lucide-react';
-import L from 'leaflet';
-import 'leaflet/dist/leaflet.css';
-import 'leaflet.markercluster';
-import 'leaflet.markercluster/dist/MarkerCluster.css';
-import 'leaflet.markercluster/dist/MarkerCluster.Default.css';
-import { extendLeaflet } from '@india-boundary-corrector/leaflet-layer';
-
-try {
-  extendLeaflet(L);
-} catch (e) {
-  console.warn("IndiaBoundaryCorrector init warning:", e);
-}
 
 import { API_URL as API } from '../config/api';
 import { 
@@ -27,11 +15,10 @@ import {
   FALLBACK_DIVISIONS, 
   FALLBACK_ZONES 
 } from '../data/gisFallbackData';
-import { INDIA_SOI_BOUNDARY } from '../data/indiaBoundaryGeojson';
-import { INDIA_OFFICIAL_STATES_GEOJSON } from '../data/indiaOfficialStatesGeojson';
+import { INDIA_SVG_STATES, INDIA_SVG_VIEWBOX, geoToSvgCoords } from '../data/indiaSvgData';
 import { INDIAN_RAILWAY_TRUNK_CORRIDORS } from '../data/indiaRailwayCorridors';
 
-// Status styling configuration
+// Water quality status styling configuration
 const STATUS_CONFIG: Record<string, { color: string; label: string; priority: number; bg: string; border: string }> = {
   PERSISTENT_FAILURE: { 
     color: '#ef4444', 
@@ -87,49 +74,9 @@ const WS_STATUS_MAP: Record<string, string> = {
   'COMPLIANT': 'COMPLIANT'
 };
 
-export type BasemapKey = 'india_clean' | 'satellite' | 'street' | 'topo';
-
-// Official Survey of India Compliant Basemap Providers (NO API KEY REQUIRED)
-const BASEMAP_TILES: Record<string, { name: string; url: string; subdomains: string[]; maxZoom: number; attribution: string }> = {
-  india_clean: {
-    name: 'Official India Map',
-    url: '',
-    subdomains: [],
-    maxZoom: 18,
-    attribution: 'Official Sovereign Map of India &copy; Survey of India'
-  },
-  satellite: {
-    name: 'Satellite Aerial (Clean)',
-    url: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
-    subdomains: [],
-    maxZoom: 18,
-    attribution: 'Tiles &copy; Esri World Imagery &mdash; Survey of India Demarcation'
-  },
-  street: {
-    name: 'Street Map (SOI Corrected)',
-    url: 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
-    subdomains: ['a', 'b', 'c'],
-    maxZoom: 19,
-    attribution: '&copy; OpenStreetMap contributors &mdash; Corrected with Survey of India PMTiles'
-  },
-  topo: {
-    name: 'Topographic Relief',
-    url: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Topo_Map/MapServer/tile/{z}/{y}/{x}',
-    subdomains: [],
-    maxZoom: 18,
-    attribution: 'Tiles &copy; Esri &mdash; World Topo Map'
-  }
-};
-
 export default function GISMap() {
   const navigate = useNavigate();
   const containerRef = useRef<HTMLDivElement>(null);
-  const mapRef = useRef<HTMLDivElement>(null);
-  const mapInstanceRef = useRef<L.Map | null>(null);
-  const clusterGroupRef = useRef<any>(null);
-  const activeTileLayerRef = useRef<L.TileLayer | null>(null);
-  const statesLayerRef = useRef<L.GeoJSON | null>(null);
-  const railwayCorridorsRef = useRef<L.LayerGroup | null>(null);
 
   // Data state
   const [loading, setLoading] = useState(true);
@@ -141,43 +88,77 @@ export default function GISMap() {
 
   // UI state
   const [selectedStation, setSelectedStation] = useState<any>(null);
-  const [selectedSource, setSelectedSource] = useState<any>(null);
+  const [hoveredStation, setHoveredStation] = useState<any>(null);
+  const [hoveredState, setHoveredState] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [filterStatus, setFilterStatus] = useState<string>('ALL');
   const [filterDivision, setFilterDivision] = useState<string>('ALL');
-  const [activeBasemap, setActiveBasemap] = useState<BasemapKey>('india_clean');
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [showCorridors, setShowCorridors] = useState(true);
   const [copiedCoords, setCopiedCoords] = useState(false);
+
+  // Pan and Zoom state
+  const [zoom, setZoom] = useState(1);
+  const [pan, setPan] = useState({ x: 0, y: 0 });
+  const [isDragging, setIsDragging] = useState(false);
+  const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
 
   // Toggle true Fullscreen mode
   const toggleFullscreen = () => {
     if (!document.fullscreenElement) {
       containerRef.current?.requestFullscreen().then(() => {
         setIsFullscreen(true);
-        setTimeout(() => mapInstanceRef.current?.invalidateSize(), 200);
       }).catch(err => {
         console.error("Fullscreen request failed", err);
       });
     } else {
       document.exitFullscreen().then(() => {
         setIsFullscreen(false);
-        setTimeout(() => mapInstanceRef.current?.invalidateSize(), 200);
       }).catch(err => {
         console.error("Exit fullscreen failed", err);
       });
     }
   };
 
-  // Sync fullscreen change with Esc key or browser shortcuts
   useEffect(() => {
     const handleFullscreenChange = () => {
       setIsFullscreen(!!document.fullscreenElement);
-      setTimeout(() => mapInstanceRef.current?.invalidateSize(), 200);
     };
     document.addEventListener('fullscreenchange', handleFullscreenChange);
     return () => document.removeEventListener('fullscreenchange', handleFullscreenChange);
   }, []);
+
+  // Zoom handlers
+  const handleZoomIn = () => setZoom(z => Math.min(z * 1.3, 4));
+  const handleZoomOut = () => setZoom(z => Math.max(z / 1.3, 0.7));
+  const handleResetView = () => {
+    setZoom(1);
+    setPan({ x: 0, y: 0 });
+  };
+
+  // Mouse wheel zoom
+  const handleWheel = (e: React.WheelEvent) => {
+    e.preventDefault();
+    const factor = e.deltaY < 0 ? 1.15 : 0.87;
+    setZoom(z => Math.min(Math.max(z * factor, 0.7), 4));
+  };
+
+  // Mouse drag pan
+  const handleMouseDown = (e: React.MouseEvent) => {
+    if (e.button !== 0) return; // Only left click
+    setIsDragging(true);
+    setDragStart({ x: e.clientX - pan.x, y: e.clientY - pan.y });
+  };
+
+  const handleMouseMove = (e: React.MouseEvent) => {
+    if (!isDragging) return;
+    setPan({
+      x: e.clientX - dragStart.x,
+      y: e.clientY - dragStart.y
+    });
+  };
+
+  const handleMouseUp = () => setIsDragging(false);
 
   // Fetch or fallback data loading
   const loadData = useCallback(async () => {
@@ -198,7 +179,6 @@ export default function GISMap() {
         setZones(zoneRes.data || []);
         setUsingFallback(false);
       } else {
-        // Fallback to Pan-India demonstration network
         setStations(FALLBACK_STATIONS);
         setWaterSources(FALLBACK_WATER_SOURCES);
         setDivisions(FALLBACK_DIVISIONS);
@@ -231,7 +211,6 @@ export default function GISMap() {
     return stations.map(stn => {
       const div = divMap.get(stn.division_id) || stn.division;
       const zone = div ? (zoneMap.get(div.zone_id) || div.zone || stn.zone) : stn.zone;
-      
       const stnSources = waterSources.filter(ws => ws.station_id === stn.id);
       
       let stnStatus = 'NO_SOURCES';
@@ -246,16 +225,36 @@ export default function GISMap() {
         }
       });
 
+      // Calculate SVG projection coordinates from real lat/long
+      const coords = (stn.gps_lat && stn.gps_long) ? geoToSvgCoords(stn.gps_lat, stn.gps_long) : { x: 0, y: 0 };
+
       return {
         ...stn,
         division: div,
         zone: zone,
         sources: stnSources,
         status: stnStatus,
-        color: STATUS_CONFIG[stnStatus]?.color || '#94a3b8'
+        color: STATUS_CONFIG[stnStatus]?.color || '#94a3b8',
+        svgX: coords.x,
+        svgY: coords.y
       };
     });
   }, [stations, waterSources, divisions, zones]);
+
+  // Pre-calculate SVG points for Indian Railways Broad Gauge Trunk Corridors
+  const projectedCorridors = useMemo(() => {
+    return INDIAN_RAILWAY_TRUNK_CORRIDORS.map(corridor => {
+      const points = corridor.coordinates.map(([lat, lng]) => {
+        const { x, y } = geoToSvgCoords(lat, lng);
+        return `${x},${y}`;
+      }).join(' ');
+
+      return {
+        ...corridor,
+        points
+      };
+    });
+  }, []);
 
   // Filtered station list based on search, division, and status
   const filteredStations = useMemo(() => {
@@ -277,7 +276,7 @@ export default function GISMap() {
   // Real-time surveillance KPI counts
   const kpis = useMemo(() => {
     let compliant = 0, overdue = 0, unfit = 0, persistent = 0, noData = 0, attention = 0;
-    
+
     processedStations.forEach(s => {
       if (s.status === 'COMPLIANT') compliant++;
       else if (s.status === 'OVERDUE') overdue++;
@@ -294,386 +293,77 @@ export default function GISMap() {
     };
   }, [processedStations]);
 
-  // 1. Initialize Map ONCE on mount with robust cleanup
-  useEffect(() => {
-    if (!mapRef.current) return;
-
-    // Pan-India center coordinates [Lat, Lng], Zoom 5
-    const map = L.map(mapRef.current, {
-      center: [21.5, 79.5],
-      zoom: 5,
-      minZoom: 4,
-      maxZoom: 18,
-      zoomControl: false,
-      attributionControl: false
-    });
-
-    // Custom positioned Zoom Control in bottom-right
-    L.control.zoom({ position: 'bottomright' }).addTo(map);
-
-    // Initial tile layer (Esri Satellite Aerial - 100% Free of disputed lines)
-    // 1. Official Survey of India State Boundaries (From Official India SVG)
-    const stateLayer = L.geoJSON(INDIA_OFFICIAL_STATES_GEOJSON as any, {
-      style: () => ({
-        color: '#38bdf8',
-        weight: 1.2,
-        opacity: 0.7,
-        fillColor: '#0f172a',
-        fillOpacity: 0.94
-      }),
-      onEachFeature: (feature, layer) => {
-        const name = feature.properties?.name || 'State of India';
-        layer.bindTooltip(`
-          <div style="font-family: inherit; font-size: 11px; font-weight: 700; color: #38bdf8; padding: 2px;">
-            🇮🇳 ${name}
-          </div>
-        `, { sticky: true, className: 'custom-leaflet-tooltip' });
-        layer.on({
-          mouseover: (e) => {
-            const l = e.target;
-            l.setStyle({
-              weight: 2,
-              color: '#60a5fa',
-              fillColor: '#1e293b',
-              fillOpacity: 0.98
-            });
-          },
-          mouseout: (e) => {
-            stateLayer.resetStyle(e.target);
-          }
-        });
-      }
-    }).addTo(map);
-    statesLayerRef.current = stateLayer;
-
-    // 2. Sovereign Outer Boundary Glow & Stroke (100% Survey of India Demarcation)
-    L.geoJSON(INDIA_SOI_BOUNDARY as any, {
-      style: {
-        color: '#0284c7',
-        weight: 5,
-        opacity: 0.45,
-        fill: false,
-      }
-    }).addTo(map);
-
-    L.geoJSON(INDIA_SOI_BOUNDARY as any, {
-      style: {
-        color: '#0369a1',
-        weight: 2.8,
-        opacity: 1.0,
-        fill: false,
-      }
-    }).addTo(map);
-
-    // 3. Add Indian Railways Broad Gauge Trunk Corridors
-    const corridorLayer = L.layerGroup();
-    INDIAN_RAILWAY_TRUNK_CORRIDORS.forEach(corridor => {
-      const line = L.polyline(corridor.coordinates, {
-        color: corridor.color || '#3b82f6',
-        weight: 3.2,
-        opacity: 0.75,
-      });
-      const dash = L.polyline(corridor.coordinates, {
-        color: '#ffffff',
-        weight: 1.6,
-        dashArray: '6, 8',
-        opacity: 0.9,
-      });
-      line.bindTooltip(`
-        <div style="font-family: inherit; font-size: 11px; padding: 2px;">
-          <strong style="color: #60a5fa;">${corridor.name}</strong><br/>
-          <span style="color: #94a3b8;">Indian Railways Broad Gauge Trunk Network</span>
-        </div>
-      `, { sticky: true, className: 'custom-leaflet-tooltip' });
-      corridorLayer.addLayer(line);
-      corridorLayer.addLayer(dash);
-    });
-    corridorLayer.addTo(map);
-    railwayCorridorsRef.current = corridorLayer;
-
-    // Marker cluster group setup
-    const cluster = (L as any).markerClusterGroup({
-      maxClusterRadius: 45,
-      spiderfyOnMaxZoom: true,
-      showCoverageOnHover: false,
-      iconCreateFunction: function (c: any) {
-        const childMarkers = c.getAllChildMarkers();
-        let worstPriority = 0;
-        let worstColor = '#64748b';
-
-        childMarkers.forEach((m: any) => {
-          const priority = m.options.customPriority || 0;
-          if (priority > worstPriority) {
-            worstPriority = priority;
-            worstColor = m.options.customColor || '#64748b';
-          }
-        });
-
-        const count = c.getChildCount();
-        const isCriticalCluster = worstPriority >= 5;
-
-        return L.divIcon({
-          html: `
-            <div class="custom-gis-cluster ${isCriticalCluster ? 'cluster-pulse' : ''}" style="background: ${worstColor};">
-              <span class="cluster-count">${count}</span>
-            </div>
-          `,
-          className: 'custom-cluster-wrapper',
-          iconSize: L.point(40, 40)
-        });
-      }
-    });
-
-    map.addLayer(cluster);
-    mapInstanceRef.current = map;
-    clusterGroupRef.current = cluster;
-
-    // Invalidate size after layout settles to guarantee complete tile rendering
-    const timer1 = setTimeout(() => map.invalidateSize(), 150);
-    const timer2 = setTimeout(() => map.invalidateSize(), 500);
-
-    // Auto resize listener
-    const handleResize = () => map.invalidateSize();
-    window.addEventListener('resize', handleResize);
-
-    return () => {
-      clearTimeout(timer1);
-      clearTimeout(timer2);
-      window.removeEventListener('resize', handleResize);
-      map.remove();
-      mapInstanceRef.current = null;
-      clusterGroupRef.current = null;
-      activeTileLayerRef.current = null;
-      statesLayerRef.current = null;
-      railwayCorridorsRef.current = null;
-    };
-  }, []);
-
-  // Sync Railway Corridors Visibility
-  useEffect(() => {
-    const map = mapInstanceRef.current;
-    const layer = railwayCorridorsRef.current;
-    if (!map || !layer) return;
-    if (showCorridors) {
-      if (!map.hasLayer(layer)) map.addLayer(layer);
-    } else {
-      if (map.hasLayer(layer)) map.removeLayer(layer);
-    }
-  }, [showCorridors]);
-
-  // 2. Handle Basemap Layer Switching
-  useEffect(() => {
-    const map = mapInstanceRef.current;
-    if (!map) return;
-
-    // Clean up active tile layer
-    if (activeTileLayerRef.current) {
-      map.removeLayer(activeTileLayerRef.current);
-      activeTileLayerRef.current = null;
-    }
-
-    const stateLayer = statesLayerRef.current;
-
-    if (activeBasemap === 'india_clean') {
-      // Pure Sovereign Vector Map of India (Clean slate - NO foreign countries or distorted borders)
-      if (stateLayer) {
-        stateLayer.setStyle({
-          color: '#38bdf8',
-          weight: 1.2,
-          opacity: 0.7,
-          fillColor: '#0f172a',
-          fillOpacity: 0.94
-        });
-      }
-    } else {
-      // Tile layer behind official India map (Satellite, Street, Topo)
-      if (stateLayer) {
-        stateLayer.setStyle({
-          color: '#38bdf8',
-          weight: 1.4,
-          opacity: 0.85,
-          fillColor: '#0f172a',
-          fillOpacity: 0.25
-        });
-      }
-
-      const config = BASEMAP_TILES[activeBasemap];
-      if (config && config.url) {
-        let newTile: L.TileLayer;
-        if (activeBasemap === 'street' && typeof (L.tileLayer as any).indiaBoundaryCorrected === 'function') {
-          newTile = (L.tileLayer as any).indiaBoundaryCorrected(config.url, {
-            subdomains: config.subdomains,
-            maxZoom: config.maxZoom,
-            attribution: config.attribution,
-            pmtilesUrl: '/india_boundary_corrections.pmtiles',
-            fallbackOnCorrectionFailure: true
-          });
-        } else {
-          newTile = L.tileLayer(config.url, {
-            subdomains: config.subdomains,
-            maxZoom: config.maxZoom,
-            attribution: config.attribution
-          });
-        }
-
-        newTile.addTo(map);
-        newTile.bringToBack();
-        activeTileLayerRef.current = newTile;
-      }
-    }
-  }, [activeBasemap]);
-
-  // 3. Update Markers when filteredStations change
-  useEffect(() => {
-    const map = mapInstanceRef.current;
-    const cluster = clusterGroupRef.current;
-    if (!map || !cluster) return;
-
-    cluster.clearLayers();
-    const markers: L.Marker[] = [];
-
-    filteredStations.forEach(stn => {
-      const lat = stn.gps_lat;
-      const lng = stn.gps_long;
-      if (!lat || !lng || isNaN(lat) || isNaN(lng)) return;
-
-      const priority = STATUS_CONFIG[stn.status]?.priority || 1;
-      const statusColor = stn.color;
-      const isUrgent = priority >= 4;
-
-      const icon = L.divIcon({
-        className: 'custom-station-pin',
-        html: `
-          <div class="pin-container">
-            ${isUrgent ? `<div class="pin-radar" style="border-color: ${statusColor}; background: ${statusColor}22;"></div>` : ''}
-            <div class="pin-core" style="background-color: ${statusColor}; box-shadow: 0 0 10px ${statusColor}99;">
-              <span class="pin-dot"></span>
-            </div>
-            <div class="pin-label">${stn.code}</div>
-          </div>
-        `,
-        iconSize: L.point(32, 32),
-        iconAnchor: [16, 16],
-        tooltipAnchor: [16, -10]
-      });
-
-      const marker = L.marker([lat, lng], {
-        icon,
-        customPriority: priority,
-        customColor: statusColor
-      } as any);
-
-      // Glassmorphic rich tooltip
-      const tooltipContent = `
-        <div class="station-tooltip-card">
-          <div class="tooltip-header">
-            <span class="tooltip-badge" style="background: ${statusColor}25; color: ${statusColor}; border: 1px solid ${statusColor}60;">
-              ${STATUS_CONFIG[stn.status]?.label || 'Standard'}
-            </span>
-            <span class="tooltip-div">${stn.division?.name || 'IR'}</span>
-          </div>
-          <div class="tooltip-title">${stn.name}</div>
-          <div class="tooltip-meta">
-            <div><span class="meta-label">CODE:</span> <strong class="meta-val">${stn.code}</strong></div>
-            <div><span class="meta-label">SOURCES:</span> <strong class="meta-val">${stn.sources?.length || 0}</strong></div>
-          </div>
-          <div class="tooltip-action">Click marker to inspect water surveillance</div>
-        </div>
-      `;
-
-      marker.bindTooltip(tooltipContent, {
-        direction: 'top',
-        className: 'custom-leaflet-tooltip',
-        offset: [0, -12],
-        opacity: 1
-      });
-
-      marker.on('click', () => {
-        setSelectedStation(stn);
-        setSelectedSource(stn.sources?.[0] || null);
-        map.setView([lat, lng], 12, { animate: true });
-      });
-
-      markers.push(marker);
-    });
-
-    cluster.addLayers(markers);
-
-    // Frame the map to markers
-    if (markers.length > 0) {
-      const group = L.featureGroup(markers);
-      if (searchQuery) {
-        map.fitBounds(group.getBounds(), { padding: [60, 60], maxZoom: 12 });
-      }
-    }
-  }, [filteredStations, searchQuery]);
-
-  // Pan-India view reset
-  const handleResetView = () => {
-    const map = mapInstanceRef.current;
-    if (!map) return;
-    map.setView([21.5, 79.5], 5, { animate: true });
-    setSelectedStation(null);
-  };
-
-  // Jump to worst priority station
+  // Quick focus on highest severity station
   const handleFocusCritical = () => {
     const critical = filteredStations.find(s => s.status === 'PERSISTENT_FAILURE' || s.status === 'UNFIT');
-    if (critical && mapInstanceRef.current) {
-      mapInstanceRef.current.setView([critical.gps_lat, critical.gps_long], 13, { animate: true });
+    if (critical) {
       setSelectedStation(critical);
-      setSelectedSource(critical.sources?.[0] || null);
+      setZoom(1.8);
+      // Pan to center of SVG space (w=612, h=696)
+      setPan({
+        x: -(critical.svgX - 306) * 1.8,
+        y: -(critical.svgY - 348) * 1.8
+      });
     }
   };
 
-  // Copy GPS Coordinates
+  // Copy GPS coords
   const handleCopyCoords = (lat: number, lng: number) => {
-    navigator.clipboard.writeText(`${lat.toFixed(6)}, ${lng.toFixed(6)}`);
+    navigator.clipboard.writeText(`${lat.toFixed(5)}, ${lng.toFixed(5)}`);
     setCopiedCoords(true);
     setTimeout(() => setCopiedCoords(false), 2000);
   };
 
   return (
-    <div ref={containerRef} className="relative w-full h-full flex flex-col bg-slate-950 text-slate-100 overflow-hidden font-sans select-none">
-      
-      {/* ----------------- TOP INTERACTIVE COMMAND HUD ----------------- */}
-      <header className="flex-none bg-slate-900/95 backdrop-blur-md border-b border-slate-800/80 px-4 py-2.5 z-20 shadow-xl">
-        <div className="flex flex-wrap items-center justify-between gap-3">
+    <div 
+      ref={containerRef} 
+      className="relative flex flex-col w-full h-full bg-slate-950 text-slate-100 overflow-hidden font-sans select-none"
+    >
+      {/* ----------------- TOP OPERATIONAL HEADER BAR ----------------- */}
+      <header className="bg-slate-900/95 backdrop-blur-md border-b border-slate-800 z-20 px-4 py-2.5 shadow-xl shrink-0">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
           
-          {/* Left: Branding & Status Badge */}
+          {/* Left: Branding & Subtitle */}
           <div className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-xl bg-gradient-to-tr from-blue-700 via-blue-600 to-indigo-500 flex items-center justify-center shadow-lg shadow-blue-500/20 border border-blue-400/30">
-              <Compass className="w-5 h-5 text-white animate-spin-slow" />
+            <div className="w-9 h-9 rounded-xl bg-blue-600/20 border border-blue-500/30 flex items-center justify-center text-blue-400 shadow-inner">
+              <Train className="w-5 h-5 text-blue-400" />
             </div>
             <div>
               <div className="flex items-center gap-2">
-                <h1 className="text-sm font-extrabold text-white tracking-wide uppercase">GIS Surveillance Command</h1>
+                <h1 className="text-sm font-bold tracking-wider text-white uppercase flex items-center gap-1.5">
+                  <span>Pan-India Railway Water Surveillance GIS Command</span>
+                </h1>
                 {usingFallback && (
-                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-500/15 text-amber-300 border border-amber-500/30" title="Backend API is offline or empty. Displaying Pan-India demonstration data.">
-                    <span className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse"></span>
-                    Live Network
+                  <span className="px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/30 text-[10px] font-mono font-bold tracking-tight">
+                    DEMO SIMULATION
                   </span>
                 )}
+                <span className="px-2 py-0.5 rounded-full bg-sky-500/20 text-sky-300 border border-sky-500/30 text-[10px] font-mono font-bold">
+                  SURVEY OF INDIA COMPLIANT
+                </span>
               </div>
-              <p className="text-[11px] text-slate-400 font-medium">Pan-India Water Quality Telematics & Incident Map</p>
+              <p className="text-[11px] text-slate-400 hidden sm:block">
+                Exclusive Sovereign Indian Railways Infrastructure • Integrated Water Quality Monitoring System
+              </p>
             </div>
           </div>
 
-          {/* Middle: Integrated Quick Search & Division Filter */}
-          <div className="flex items-center gap-2 flex-1 max-w-xl mx-2">
-            <div className="relative flex-1">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 w-4 h-4 pointer-events-none" />
-              <input 
-                type="text" 
-                placeholder="Search station (e.g. MAS, New Delhi, Howrah, CSMT) or source..." 
+          {/* Middle: Live Filter & Search Controls */}
+          <div className="flex items-center gap-2 flex-wrap">
+            {/* Search station input */}
+            <div className="relative min-w-[200px] flex-1 sm:flex-initial">
+              <Search className="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-1/2 -translate-y-1/2" />
+              <input
+                type="text"
                 value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full bg-slate-800/90 border border-slate-700/80 hover:border-slate-600 rounded-lg pl-9 pr-8 py-1.5 text-xs text-white placeholder-slate-400 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all shadow-inner"
+                onChange={e => setSearchQuery(e.target.value)}
+                placeholder="Search station (e.g. MAS, NDLS, HWH)..."
+                className="w-full bg-slate-950/80 border border-slate-700/80 rounded-lg pl-8 pr-7 py-1.5 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all"
               />
               {searchQuery && (
                 <button 
-                  onClick={() => setSearchQuery('')} 
-                  className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white p-0.5 rounded"
+                  onClick={() => setSearchQuery('')}
+                  className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white"
                 >
                   <X className="w-3.5 h-3.5" />
                 </button>
@@ -681,9 +371,10 @@ export default function GISMap() {
             </div>
 
             {/* Division Selector */}
-            <div className="relative min-w-[150px]">
-              <select 
-                className="w-full bg-slate-800/90 border border-slate-700/80 hover:border-slate-600 rounded-lg px-2.5 py-1.5 text-xs text-slate-200 focus:outline-none focus:border-blue-500 transition-all cursor-pointer font-medium"
+            <div className="relative">
+              <select
+                aria-label="Filter by Railway Division"
+                className="bg-slate-950/80 border border-slate-700/80 rounded-lg px-2.5 py-1.5 text-xs text-slate-300 focus:outline-none focus:border-blue-500 transition-all cursor-pointer font-medium"
                 value={filterDivision}
                 onChange={e => setFilterDivision(e.target.value)}
               >
@@ -702,8 +393,8 @@ export default function GISMap() {
               title="Reset to Pan-India view"
               className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 border border-slate-700 text-xs font-semibold text-slate-200 transition-all"
             >
-              <Compass className="w-3.5 h-3.5 text-blue-400" />
-              <span className="hidden sm:inline">Pan-India</span>
+              <RotateCcw className="w-3.5 h-3.5 text-blue-400" />
+              <span className="hidden sm:inline">Reset View</span>
             </button>
 
             {kpis.unfit + kpis.persistent > 0 && (
@@ -815,66 +506,82 @@ export default function GISMap() {
         </div>
       </header>
 
-      {/* ----------------- MAIN MAP WORKSPACE ----------------- */}
-      <div className="relative flex-1 w-full h-full overflow-hidden bg-slate-950">
-        
-        {/* LEAFLET MAP ELEMENT (ALWAYS MOUNTED IN DOM) */}
-        <div ref={mapRef} className="absolute inset-0 z-0 w-full h-full bg-slate-950" />
+      {/* ----------------- MAIN SOVEREIGN INDIA VECTOR WORKSPACE ----------------- */}
+      <div 
+        className="relative flex-1 w-full h-full overflow-hidden bg-slate-950 cursor-grab active:cursor-grabbing flex items-center justify-center"
+        onMouseDown={handleMouseDown}
+        onMouseMove={handleMouseMove}
+        onMouseUp={handleMouseUp}
+        onMouseLeave={handleMouseUp}
+        onWheel={handleWheel}
+      >
+        {/* Subtle Radar Background Grid Pattern */}
+        <div 
+          className="absolute inset-0 pointer-events-none opacity-20"
+          style={{
+            backgroundImage: `radial-gradient(rgba(56, 189, 248, 0.25) 1px, transparent 1px)`,
+            backgroundSize: '28px 28px'
+          }}
+        />
 
-        {/* LOADING RADAR OVERLAY */}
+        {/* LOADING OVERLAY */}
         {loading && (
-          <div className="absolute inset-0 z-30 bg-slate-950/70 backdrop-blur-sm flex flex-col items-center justify-center transition-all duration-300">
-            <div className="relative w-20 h-20 mb-4 flex items-center justify-center">
+          <div className="absolute inset-0 z-30 bg-slate-950/80 backdrop-blur-sm flex flex-col items-center justify-center">
+            <div className="relative w-16 h-16 mb-4 flex items-center justify-center">
               <div className="absolute inset-0 rounded-full border-2 border-blue-500/30 animate-ping"></div>
-              <div className="absolute inset-2 rounded-full border-2 border-indigo-400/40 animate-pulse"></div>
-              <div className="w-12 h-12 rounded-xl bg-blue-600 flex items-center justify-center shadow-lg shadow-blue-500/50">
-                <Compass className="w-6 h-6 text-white animate-spin" />
+              <div className="w-10 h-10 rounded-xl bg-blue-600 flex items-center justify-center shadow-lg shadow-blue-500/50">
+                <Compass className="w-5 h-5 text-white animate-spin" />
               </div>
             </div>
-            <h3 className="text-sm font-bold text-white tracking-wide uppercase">Initializing Surveillance Network</h3>
-            <p className="text-xs text-slate-400 mt-1">Connecting to Railway GIS telemetry feed...</p>
+            <h3 className="text-sm font-bold text-white tracking-wide uppercase">Initializing Pan-India Railway GIS Map</h3>
+            <p className="text-xs text-slate-400 mt-1">Survey of India Sovereign Vector Baseline...</p>
           </div>
         )}
 
-        {/* FLOATING BASEMAP SELECTOR */}
-        <div className="absolute top-4 left-4 z-10 flex flex-col gap-2">
-          <div className="bg-slate-900/95 backdrop-blur-md border border-slate-700/80 rounded-xl p-1 shadow-2xl flex items-center gap-1 flex-wrap">
-            <button
-              onClick={() => setActiveBasemap('india_clean')}
-              className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all flex items-center gap-1 ${activeBasemap === 'india_clean' ? 'bg-blue-600 text-white shadow' : 'text-slate-400 hover:text-white'}`}
-            >
-              <Compass className="w-3 h-3 text-sky-300" />
-              <span>Official India Map</span>
-            </button>
-            <button
-              onClick={() => setActiveBasemap('satellite')}
-              className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all flex items-center gap-1 ${activeBasemap === 'satellite' ? 'bg-blue-600 text-white shadow' : 'text-slate-400 hover:text-white'}`}
-            >
-              <span>Satellite Imagery</span>
-            </button>
-            <button
-              onClick={() => setActiveBasemap('street')}
-              className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all flex items-center gap-1 ${activeBasemap === 'street' ? 'bg-blue-600 text-white shadow' : 'text-slate-400 hover:text-white'}`}
-            >
-              <MapIcon className="w-3 h-3" />
-              <span>Street (SOI Corrected)</span>
-            </button>
-            <button
-              onClick={() => setActiveBasemap('topo')}
-              className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all ${activeBasemap === 'topo' ? 'bg-blue-600 text-white shadow' : 'text-slate-400 hover:text-white'}`}
-            >
-              Topographic
-            </button>
+        {/* TOP LEFT BADGE */}
+        <div className="absolute top-4 left-4 z-10 flex flex-col gap-1.5 pointer-events-none">
+          <div className="bg-slate-900/95 backdrop-blur-md border border-sky-500/40 rounded-xl px-3 py-1.5 shadow-2xl flex items-center gap-2 text-xs font-bold text-sky-200 w-fit">
+            <span className="w-2.5 h-2.5 rounded-full bg-sky-400 animate-pulse"></span>
+            <span>OFFICIAL MAP OF INDIA • SURVEY OF INDIA COMPLIANT</span>
           </div>
+          {hoveredState && (
+            <div className="bg-slate-900/95 backdrop-blur-md border border-slate-700/80 rounded-lg px-2.5 py-1 shadow-xl text-xs font-semibold text-slate-300 w-fit animate-in fade-in duration-150">
+              <span className="text-sky-400 mr-1.5">🇮🇳</span>
+              <span>{hoveredState}</span>
+            </div>
+          )}
+        </div>
 
-          <div className="bg-slate-900/90 backdrop-blur-md border border-sky-500/40 rounded-xl px-2.5 py-1 shadow-2xl flex items-center gap-1.5 text-[11px] font-bold text-sky-200 w-fit">
-            <span className="w-2 h-2 rounded-full bg-sky-400 animate-pulse"></span>
-            <span>Survey of India Compliant Sovereign Demarcation</span>
+        {/* ZOOM & PAN CONTROLS (BOTTOM RIGHT) */}
+        <div className="absolute bottom-6 right-6 z-10 flex flex-col items-center gap-1.5 bg-slate-900/90 backdrop-blur-md border border-slate-700/80 p-1.5 rounded-xl shadow-2xl">
+          <button 
+            onClick={handleZoomIn} 
+            title="Zoom In"
+            className="p-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 transition-colors"
+          >
+            <Plus className="w-4 h-4" />
+          </button>
+          <div className="text-[10px] font-mono text-slate-400 py-0.5">
+            {Math.round(zoom * 100)}%
           </div>
+          <button 
+            onClick={handleZoomOut} 
+            title="Zoom Out"
+            className="p-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 transition-colors"
+          >
+            <Minus className="w-4 h-4" />
+          </button>
+          <button 
+            onClick={handleResetView} 
+            title="Reset Pan & Zoom"
+            className="p-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-blue-400 transition-colors border-t border-slate-700/80 mt-1"
+          >
+            <RotateCcw className="w-3.5 h-3.5" />
+          </button>
         </div>
 
         {/* MAP LEGEND BADGE (BOTTOM LEFT) */}
-        <div className="absolute bottom-4 left-4 z-10 bg-slate-900/95 backdrop-blur-md border border-slate-700/80 rounded-xl p-3 shadow-2xl hidden md:block max-w-xs">
+        <div className="absolute bottom-4 left-4 z-10 bg-slate-900/95 backdrop-blur-md border border-slate-700/80 rounded-xl p-3 shadow-2xl hidden md:block max-w-xs pointer-events-auto">
           <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2 flex items-center justify-between">
             <span>Water Quality Status</span>
             <span className="text-[9px] text-blue-400 font-mono">IS 10500:2012</span>
@@ -900,19 +607,206 @@ export default function GISMap() {
         </div>
 
         {/* BOTTOM RIGHT CREDITS BADGE */}
-        <div className="absolute bottom-4 right-14 z-10 bg-slate-900/90 backdrop-blur-md border border-slate-700/80 px-3 py-1.5 rounded-lg shadow-xl hidden sm:flex items-center gap-2 text-[11px] text-slate-300 font-semibold tracking-wide">
+        <div className="absolute bottom-4 right-20 z-10 bg-slate-900/90 backdrop-blur-md border border-slate-700/80 px-3 py-1.5 rounded-lg shadow-xl hidden sm:flex items-center gap-2 text-[11px] text-slate-300 font-semibold tracking-wide pointer-events-none">
           <span className="text-blue-400">IR-IWQMS</span>
           <span className="text-slate-500">&bull;</span>
           <span>DONE BY NIRANJAN.R | ARUN KARTHICK .P | MADHAN KUMAR .S</span>
         </div>
 
+        {/* ----------------- THE INTERACTIVE SOVEREIGN INDIA SVG MAP ----------------- */}
+        <div 
+          className="transition-transform duration-75 ease-out origin-center"
+          style={{
+            transform: `translate(${pan.x}px, ${pan.y}px) scale(${zoom})`,
+            width: '612px',
+            height: '696px'
+          }}
+        >
+          <svg
+            viewBox={INDIA_SVG_VIEWBOX}
+            className="w-full h-full drop-shadow-[0_10px_35px_rgba(2,132,199,0.2)] overflow-visible"
+          >
+            {/* 1. RENDER ALL 36 STATES AND UNION TERRITORIES */}
+            <g id="india-states-layer">
+              {INDIA_SVG_STATES.map(state => {
+                const isHovered = hoveredState === state.name;
+                return (
+                  <path
+                    key={state.id}
+                    id={state.id}
+                    d={state.d}
+                    fill={isHovered ? '#1e293b' : '#0f172a'}
+                    stroke={isHovered ? '#38bdf8' : '#334155'}
+                    strokeWidth={isHovered ? 1.6 : 0.85}
+                    className="transition-colors duration-150 cursor-pointer"
+                    onMouseEnter={() => setHoveredState(state.name)}
+                    onMouseLeave={() => setHoveredState(null)}
+                  />
+                );
+              })}
+            </g>
+
+            {/* 2. RENDER INDIAN RAILWAYS BROAD GAUGE TRUNK CORRIDORS */}
+            {showCorridors && (
+              <g id="india-railway-corridors-layer" className="pointer-events-none">
+                {projectedCorridors.map(corridor => (
+                  <g key={corridor.id}>
+                    {/* Outer glow stroke */}
+                    <polyline
+                      points={corridor.points}
+                      fill="none"
+                      stroke={corridor.color || '#3b82f6'}
+                      strokeWidth="3.2"
+                      strokeOpacity="0.7"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    />
+                    {/* Inner high-contrast dashed railway line */}
+                    <polyline
+                      points={corridor.points}
+                      fill="none"
+                      stroke="#ffffff"
+                      strokeWidth="1.4"
+                      strokeDasharray="4, 5"
+                      strokeOpacity="0.95"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    />
+                  </g>
+                ))}
+              </g>
+            )}
+
+            {/* 3. RENDER ALL STATION MONITORING TELEMETRY PINS */}
+            <g id="india-stations-layer">
+              {filteredStations.map(stn => {
+                const isSelected = selectedStation?.id === stn.id;
+                const isUrgent = stn.status === 'UNFIT' || stn.status === 'PERSISTENT_FAILURE' || stn.status === 'OVERDUE';
+                const statusColor = stn.color;
+
+                return (
+                  <g 
+                    key={stn.id}
+                    className="cursor-pointer transition-transform duration-150 hover:scale-125"
+                    style={{ transformOrigin: `${stn.svgX}px ${stn.svgY}px` }}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setSelectedStation(stn);
+                    }}
+                    onMouseEnter={() => setHoveredStation(stn)}
+                    onMouseLeave={() => setHoveredStation(null)}
+                  >
+                    {/* Pulsing Radar Ring for Urgent Stations */}
+                    {isUrgent && (
+                      <circle
+                        cx={stn.svgX}
+                        cy={stn.svgY}
+                        r="14"
+                        fill="none"
+                        stroke={statusColor}
+                        strokeWidth="1.8"
+                        strokeOpacity="0.8"
+                        className="animate-ping"
+                      />
+                    )}
+
+                    {/* Outer Status Ring */}
+                    <circle
+                      cx={stn.svgX}
+                      cy={stn.svgY}
+                      r={isSelected ? 8.5 : 6.5}
+                      fill={statusColor}
+                      stroke="#ffffff"
+                      strokeWidth={isSelected ? 2.5 : 1.8}
+                      className="shadow-lg"
+                    />
+
+                    {/* Inner Core Dot */}
+                    <circle
+                      cx={stn.svgX}
+                      cy={stn.svgY}
+                      r={isSelected ? 3.5 : 2.5}
+                      fill="#ffffff"
+                    />
+
+                    {/* Station Code Badge Pill */}
+                    <g transform={`translate(${stn.svgX}, ${stn.svgY - 11})`}>
+                      <rect
+                        x="-16"
+                        y="-8"
+                        width="32"
+                        height="12"
+                        rx="4"
+                        fill="rgba(15, 23, 42, 0.9)"
+                        stroke={isSelected ? '#38bdf8' : 'rgba(100, 116, 139, 0.6)'}
+                        strokeWidth="0.8"
+                      />
+                      <text
+                        x="0"
+                        y="1"
+                        textAnchor="middle"
+                        fill="#f8fafc"
+                        fontSize="7.5"
+                        fontWeight="800"
+                        fontFamily="ui-monospace, monospace"
+                      >
+                        {stn.code}
+                      </text>
+                    </g>
+                  </g>
+                );
+              })}
+            </g>
+          </svg>
+        </div>
+
+        {/* HOVER TOOLTIP CARD */}
+        {hoveredStation && !selectedStation && (
+          <div 
+            className="absolute z-20 pointer-events-none bg-slate-900/95 backdrop-blur-md border border-slate-700/80 rounded-xl p-3 shadow-2xl max-w-xs text-xs animate-in fade-in zoom-in-95 duration-100"
+            style={{
+              left: Math.min(Math.max(hoveredStation.svgX * zoom + pan.x + (containerRef.current?.clientWidth || 0) / 2 - 306 * zoom + 15, 20), (containerRef.current?.clientWidth || 600) - 240),
+              top: Math.min(Math.max(hoveredStation.svgY * zoom + pan.y + (containerRef.current?.clientHeight || 0) / 2 - 348 * zoom - 80, 20), (containerRef.current?.clientHeight || 600) - 140)
+            }}
+          >
+            <div className="flex items-center justify-between gap-2 mb-1.5">
+              <span className="font-mono font-bold text-[10px] bg-blue-500/20 text-blue-300 border border-blue-500/30 px-1.5 py-0.2 rounded">
+                {hoveredStation.code}
+              </span>
+              <span 
+                className="text-[10px] font-bold uppercase tracking-wider px-1.5 py-0.2 rounded border"
+                style={{ 
+                  color: STATUS_CONFIG[hoveredStation.status]?.color,
+                  borderColor: `${STATUS_CONFIG[hoveredStation.status]?.color}40`,
+                  backgroundColor: STATUS_CONFIG[hoveredStation.status]?.bg
+                }}
+              >
+                {STATUS_CONFIG[hoveredStation.status]?.label}
+              </span>
+            </div>
+            <div className="font-bold text-white text-sm leading-tight mb-1">
+              {hoveredStation.name}
+            </div>
+            <div className="text-[11px] text-slate-400">
+              {hoveredStation.division?.name || 'Railway Hub'} • {hoveredStation.zone?.name || 'Indian Railways'}
+            </div>
+            <div className="mt-2 pt-2 border-t border-slate-800 flex justify-between items-center text-[10px] text-slate-400">
+              <span>Monitored Water Sources:</span>
+              <span className="font-bold text-white">{hoveredStation.sources?.length || 0}</span>
+            </div>
+            <div className="text-[10px] text-blue-400 font-semibold mt-1">
+              Click station to view detailed laboratory telemetry →
+            </div>
+          </div>
+        )}
+
         {/* ----------------- SLIDE-OVER STATION DETAIL DRAWER ----------------- */}
         <div 
-          className={`absolute top-0 right-0 h-full w-full sm:w-[420px] bg-slate-900/95 backdrop-blur-xl border-l border-slate-700/80 shadow-2xl transform transition-transform duration-300 ease-in-out z-20 overflow-y-auto flex flex-col ${selectedStation ? 'translate-x-0' : 'translate-x-full'}`}
+          className={`absolute top-0 right-0 h-full w-full sm:w-[420px] bg-slate-900/95 backdrop-blur-xl border-l border-slate-700/80 shadow-2xl transform transition-transform duration-300 ease-in-out z-30 overflow-y-auto flex flex-col ${selectedStation ? 'translate-x-0' : 'translate-x-full'}`}
         >
           {selectedStation && (
             <>
-              {/* Drawer Sticky Header */}
+              {/* Drawer Header */}
               <div className="sticky top-0 bg-slate-900/90 backdrop-blur-md border-b border-slate-800 p-5 z-10 flex items-start justify-between">
                 <div>
                   <div className="flex items-center gap-2 mb-2">
@@ -947,9 +841,8 @@ export default function GISMap() {
                 </button>
               </div>
 
-              {/* Drawer Scrollable Body */}
+              {/* Drawer Body */}
               <div className="p-5 space-y-5 flex-1">
-                
                 {/* Station Coordinates & Category */}
                 <div className="bg-slate-800/60 rounded-xl border border-slate-700/80 p-3.5 space-y-2.5">
                   <div className="flex justify-between items-center text-xs">
@@ -969,302 +862,86 @@ export default function GISMap() {
                   </div>
                   <div className="flex justify-between items-center text-xs pt-1 border-t border-slate-700/50">
                     <span className="text-slate-400">Data Provenance:</span>
-                    <span className="text-[11px] text-indigo-300 font-medium truncate max-w-[200px]" title={selectedStation.source_provenance}>
-                      {selectedStation.source_provenance || 'Central Railway Registry'}
-                    </span>
+                    <span className="text-emerald-400 font-mono font-medium">IR-IWQMS Live Telemetry</span>
                   </div>
                 </div>
 
-                {/* Quick Action Dispatch Buttons */}
-                <div className="grid grid-cols-2 gap-2">
-                  <button
-                    onClick={() => navigate(`/stations/${selectedStation.id}`)}
-                    className="flex items-center justify-center gap-1.5 py-2 px-3 rounded-lg bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold transition-all shadow-md shadow-blue-600/20"
-                  >
-                    <span>Station Profile</span>
-                    <ArrowUpRight className="w-3.5 h-3.5" />
-                  </button>
-
-                  <button
-                    onClick={() => navigate(`/sampling?station_id=${selectedStation.id}`)}
-                    className="flex items-center justify-center gap-1.5 py-2 px-3 rounded-lg bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 text-xs font-bold transition-all"
-                  >
-                    <Droplets className="w-3.5 h-3.5 text-blue-400" />
-                    <span>Record Sample</span>
-                  </button>
-                </div>
-
-                {/* Water Sources Telemetry List */}
+                {/* Monitored Water Sources Section */}
                 <div>
-                  <div className="flex items-center justify-between mb-2.5">
+                  <div className="flex items-center justify-between mb-3">
                     <h3 className="text-xs font-bold text-slate-300 uppercase tracking-wider flex items-center gap-1.5">
-                      <Droplets className="w-3.5 h-3.5 text-blue-400" />
-                      <span>Registered Sources ({selectedStation.sources?.length || 0})</span>
+                      <Droplets className="w-4 h-4 text-blue-400" />
+                      <span>Monitored Water Sources ({selectedStation.sources?.length || 0})</span>
                     </h3>
                   </div>
 
-                  <div className="space-y-2.5">
-                    {selectedStation.sources?.map((ws: any) => {
-                      const statusColor = STATUS_CONFIG[WS_STATUS_MAP[ws.current_status] || 'COMPLIANT'].color;
-                      const isSelected = selectedSource?.id === ws.id;
-                      const chlorine = ws.residual_chlorine_last ?? 0;
-                      const chlorineCompliant = chlorine >= 0.2 && chlorine <= 0.5;
+                  {(!selectedStation.sources || selectedStation.sources.length === 0) ? (
+                    <div className="p-4 rounded-xl border border-dashed border-slate-700 text-center">
+                      <Droplets className="w-8 h-8 text-slate-600 mx-auto mb-2" />
+                      <p className="text-xs text-slate-400">No active water sources configured for this station.</p>
+                    </div>
+                  ) : (
+                    <div className="space-y-2.5">
+                      {selectedStation.sources.map((ws: any) => {
+                        const statusKey = WS_STATUS_MAP[ws.current_status] || 'COMPLIANT';
+                        const cfg = STATUS_CONFIG[statusKey] || STATUS_CONFIG.COMPLIANT;
 
-                      return (
-                        <div 
-                          key={ws.id}
-                          className={`rounded-xl border transition-all duration-200 overflow-hidden ${isSelected ? 'border-blue-500/80 bg-slate-800/90 shadow-lg' : 'border-slate-800 bg-slate-900/60 hover:border-slate-700'}`}
-                        >
-                          <button
-                            onClick={() => setSelectedSource(isSelected ? null : ws)}
-                            className="w-full text-left p-3.5 flex items-center justify-between"
+                        return (
+                          <div 
+                            key={ws.id}
+                            className="bg-slate-800/40 hover:bg-slate-800/80 border border-slate-700/80 rounded-xl p-3.5 transition-all cursor-pointer group"
+                            onClick={() => navigate(`/stations/${selectedStation.id}`)}
                           >
-                            <div className="flex items-center gap-2.5">
-                              <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: statusColor, boxShadow: `0 0 8px ${statusColor}90` }}></span>
+                            <div className="flex items-start justify-between gap-2 mb-1.5">
                               <div>
-                                <h4 className="text-xs font-bold text-white font-mono">{ws.source_id_code}</h4>
-                                <p className="text-[11px] text-slate-400">{ws.source_type}</p>
+                                <span className="font-mono text-xs font-bold text-blue-400 group-hover:text-blue-300">
+                                  {ws.source_id_code}
+                                </span>
+                                <span className="text-xs text-slate-300 ml-2 font-medium">
+                                  {ws.name || ws.source_type}
+                                </span>
                               </div>
+                              <span 
+                                className="px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider shrink-0"
+                                style={{ 
+                                  backgroundColor: cfg.bg, 
+                                  color: cfg.color, 
+                                  border: `1px solid ${cfg.color}40` 
+                                }}
+                              >
+                                {cfg.label}
+                              </span>
                             </div>
-                            <ChevronRight className={`w-4 h-4 text-slate-400 transition-transform ${isSelected ? 'rotate-90 text-blue-400' : ''}`} />
-                          </button>
 
-                          {/* Expanded Telemetry Metrics */}
-                          {isSelected && (
-                            <div className="p-3.5 pt-0 border-t border-slate-800/80 bg-slate-900/80 space-y-3">
-                              
-                              {/* Residual Chlorine Gauge */}
-                              <div className="bg-slate-950/60 rounded-lg p-2.5 border border-slate-800">
-                                <div className="flex justify-between items-center text-xs mb-1">
-                                  <span className="text-slate-400 font-medium flex items-center gap-1">
-                                    <Droplets className="w-3 h-3 text-cyan-400" />
-                                    Residual Chlorine:
-                                  </span>
-                                  <span className={`font-mono font-bold ${chlorineCompliant ? 'text-emerald-400' : 'text-rose-400'}`}>
-                                    {chlorine > 0 ? `${chlorine} mg/L` : 'No reading recorded'}
-                                  </span>
-                                </div>
-                                <div className="w-full bg-slate-800 h-1.5 rounded-full overflow-hidden flex">
-                                  <div 
-                                    className={`h-full ${chlorineCompliant ? 'bg-emerald-500' : 'bg-rose-500'}`} 
-                                    style={{ width: `${Math.min(chlorine * 150, 100)}%` }}
-                                  ></div>
-                                </div>
-                                <div className="flex justify-between text-[10px] text-slate-500 mt-1">
-                                  <span>0.0 mg/L</span>
-                                  <span className="text-emerald-500/80">IS 10500 Target: 0.2 - 0.5 mg/L</span>
-                                  <span>1.0+ mg/L</span>
-                                </div>
-                              </div>
-
-                              {/* Details Grid */}
-                              <div className="grid grid-cols-2 gap-2 text-xs">
-                                <div className="bg-slate-950/40 p-2 rounded border border-slate-800/60">
-                                  <span className="text-[10px] text-slate-400 block mb-0.5">Disinfection Method</span>
-                                  <span className="font-semibold text-slate-200 text-[11px]">{ws.disinfection_method || 'Standard Chlorination'}</span>
-                                </div>
-                                <div className="bg-slate-950/40 p-2 rounded border border-slate-800/60">
-                                  <span className="text-[10px] text-slate-400 block mb-0.5">Capacity</span>
-                                  <span className="font-semibold text-slate-200 text-[11px]">{ws.capacity || 'Unspecified'}</span>
-                                </div>
-                                <div className="bg-slate-950/40 p-2 rounded border border-slate-800/60">
-                                  <span className="text-[10px] text-slate-400 block mb-0.5">Last Bact. Sample</span>
-                                  <span className="font-mono text-slate-200 text-[11px]">{ws.last_bacteriological_sample_date || 'Pending Test'}</span>
-                                </div>
-                                <div className="bg-slate-950/40 p-2 rounded border border-slate-800/60">
-                                  <span className="text-[10px] text-slate-400 block mb-0.5">Failure History</span>
-                                  <span className={`font-bold text-[11px] ${ws.total_failures > 0 ? 'text-rose-400' : 'text-emerald-400'}`}>
-                                    {ws.total_failures || 0} incidents
-                                  </span>
-                                </div>
-                              </div>
-
+                            <div className="text-[11px] text-slate-400 flex items-center justify-between mt-2">
+                              <span>Location: {ws.location_description || 'Platform Supply'}</span>
+                              <span className="text-blue-400 group-hover:translate-x-0.5 transition-transform flex items-center">
+                                Telemetry <ChevronRight className="w-3.5 h-3.5 ml-0.5" />
+                              </span>
                             </div>
-                          )}
-                        </div>
-                      );
-                    })}
-
-                    {(!selectedStation.sources || selectedStation.sources.length === 0) && (
-                      <div className="p-4 border border-dashed border-slate-800 rounded-xl text-center text-xs text-slate-500">
-                        No water sources registered for this station yet.
-                      </div>
-                    )}
-                  </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
                 </div>
 
+                {/* Primary Action Button */}
+                <div className="pt-2">
+                  <button
+                    onClick={() => navigate(`/stations/${selectedStation.id}`)}
+                    className="w-full py-2.5 px-4 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white rounded-xl font-bold text-xs shadow-lg shadow-blue-500/25 flex items-center justify-center gap-2 transition-all"
+                  >
+                    <span>View Complete Station Profile & Laboratory Logs</span>
+                    <ArrowUpRight className="w-4 h-4" />
+                  </button>
+                </div>
               </div>
             </>
           )}
         </div>
 
       </div>
-
-      {/* ----------------- INJECTED LEAFLET STYLING OVERRIDES ----------------- */}
-      <style>{`
-        /* Custom Marker Cluster Style */
-        .custom-cluster-wrapper {
-          background: transparent !important;
-          border: none !important;
-        }
-        .custom-gis-cluster {
-          width: 36px;
-          height: 36px;
-          border-radius: 50%;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          color: white;
-          font-weight: 800;
-          font-size: 13px;
-          border: 2.5px solid white;
-          box-shadow: 0 4px 14px rgba(0, 0, 0, 0.4);
-          transition: transform 0.2s ease;
-        }
-        .custom-gis-cluster:hover {
-          transform: scale(1.15);
-        }
-        .cluster-pulse {
-          animation: cluster-radar 2s infinite;
-        }
-        @keyframes cluster-radar {
-          0% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7); }
-          70% { box-shadow: 0 0 0 12px rgba(239, 68, 68, 0); }
-          100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); }
-        }
-
-        /* Custom Station Pin Style */
-        .custom-station-pin {
-          background: transparent !important;
-          border: none !important;
-        }
-        .pin-container {
-          position: relative;
-          display: flex;
-          flex-direction: column;
-          align-items: center;
-          cursor: pointer;
-        }
-        .pin-radar {
-          position: absolute;
-          width: 34px;
-          height: 34px;
-          top: -8px;
-          border-radius: 50%;
-          border: 1.5px solid;
-          animation: pin-pulse 1.8s ease-out infinite;
-          pointer-events: none;
-        }
-        @keyframes pin-pulse {
-          0% { transform: scale(0.5); opacity: 1; }
-          100% { transform: scale(1.5); opacity: 0; }
-        }
-        .pin-core {
-          width: 18px;
-          height: 18px;
-          border-radius: 50%;
-          border: 2.5px solid #ffffff;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          transition: transform 0.15s ease;
-        }
-        .pin-container:hover .pin-core {
-          transform: scale(1.3);
-        }
-        .pin-dot {
-          width: 4px;
-          height: 4px;
-          border-radius: 50%;
-          background: white;
-        }
-        .pin-label {
-          font-size: 9.5px;
-          font-weight: 800;
-          color: #ffffff;
-          background: rgba(15, 23, 42, 0.85);
-          padding: 1px 4px;
-          border-radius: 4px;
-          margin-top: 2px;
-          white-space: nowrap;
-          border: 1px solid rgba(255, 255, 255, 0.15);
-          box-shadow: 0 2px 6px rgba(0,0,0,0.4);
-        }
-
-        /* Glassmorphic Tooltip Card */
-        .leaflet-tooltip.custom-leaflet-tooltip {
-          background: rgba(15, 23, 42, 0.95) !important;
-          backdrop-filter: blur(8px) !important;
-          border: 1px solid rgba(148, 163, 184, 0.25) !important;
-          border-radius: 12px !important;
-          padding: 10px 12px !important;
-          color: #ffffff !important;
-          box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.5) !important;
-        }
-        .leaflet-tooltip-top.custom-leaflet-tooltip:before {
-          border-top-color: rgba(15, 23, 42, 0.95) !important;
-        }
-        .station-tooltip-card {
-          min-width: 190px;
-          font-family: inherit;
-        }
-        .tooltip-header {
-          display: flex;
-          justify-content: space-between;
-          align-items: center;
-          margin-bottom: 4px;
-        }
-        .tooltip-badge {
-          font-size: 9px;
-          font-weight: 800;
-          padding: 1px 5px;
-          border-radius: 4px;
-          text-transform: uppercase;
-        }
-        .tooltip-div {
-          font-size: 9.5px;
-          color: #94a3b8;
-          font-weight: 600;
-        }
-        .tooltip-title {
-          font-size: 13px;
-          font-weight: 800;
-          color: #ffffff;
-          line-height: 1.25;
-          margin-bottom: 6px;
-        }
-        .tooltip-meta {
-          display: flex;
-          justify-content: space-between;
-          font-size: 11px;
-          padding-top: 4px;
-          border-top: 1px solid rgba(255, 255, 255, 0.1);
-        }
-        .meta-label {
-          color: #64748b;
-          font-size: 9.5px;
-          font-weight: 700;
-        }
-        .meta-val {
-          color: #f1f5f9;
-        }
-        .tooltip-action {
-          font-size: 9.5px;
-          color: #60a5fa;
-          margin-top: 6px;
-          font-weight: 600;
-        }
-
-        /* Utility Hide Scrollbar */
-        .no-scrollbar::-webkit-scrollbar {
-          display: none;
-        }
-        .no-scrollbar {
-          -ms-overflow-style: none;
-          scrollbar-width: none;
-        }
-      `}</style>
-
     </div>
   );
 }
