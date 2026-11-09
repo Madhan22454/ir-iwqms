@@ -22,7 +22,7 @@ export function Login() {
       if (err.response?.status === 400) {
         setError(err.response?.data?.detail || 'Invalid Employee ID or password. Please try again.');
       } else if (err.response?.status >= 500) {
-        setError('Production data service error. The server encountered an issue.');
+        setError(err.response?.data?.detail || 'Production database service unavailable. Please check the backend connection.');
       } else if (err.code === 'ERR_NETWORK' || !err.response) {
         setError('Unable to reach authentication server. Please check your network connection.');
       } else {

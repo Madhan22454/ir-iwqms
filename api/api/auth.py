@@ -1,5 +1,6 @@
 from datetime import timedelta
 from typing import Any
+import logging
 from fastapi import APIRouter, Depends, HTTPException
 from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy import func, or_
@@ -9,6 +10,8 @@ from core.config import settings
 from api.deps import get_db, CurrentUser
 from models.user import User
 from schemas.user import Token, UserResponse
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
@@ -21,16 +24,23 @@ def login_access_token(
     Supports login via employee_id or email, case-insensitively, trimmed.
     """
     identifier = form_data.username.strip()
-    user = (
-        db.query(User)
-        .filter(
-            or_(
-                func.lower(User.employee_id) == identifier.lower(),
-                func.lower(User.email) == identifier.lower(),
+    try:
+        user = (
+            db.query(User)
+            .filter(
+                or_(
+                    func.lower(User.employee_id) == identifier.lower(),
+                    func.lower(User.email) == identifier.lower(),
+                )
             )
+            .first()
         )
-        .first()
-    )
+    except Exception as db_err:
+        logger.error(f"Database error during login query: {db_err}")
+        raise HTTPException(
+            status_code=503,
+            detail="Production database unavailable. If using Supabase, please verify the project is unpaused and DATABASE_URL is up to date.",
+        )
     if not user:
         raise HTTPException(status_code=400, detail="Incorrect Employee ID / Email or password")
     if not verify_password(form_data.password, user.hashed_password):
