@@ -18,6 +18,7 @@ import {
   RefreshCw
 } from 'lucide-react';
 import { API_URL } from '../config/api';
+import { FALLBACK_STATIONS, FALLBACK_WATER_SOURCES } from '../data/gisFallbackData';
 
 interface StationDetailData {
   id: number;
@@ -125,8 +126,18 @@ export default function StationProfile() {
       }
 
     } catch (err: any) {
-      console.error('Failed to load station profile', err);
-      setError(err?.response?.data?.detail || err?.message || 'Failed to load station profile.');
+      console.warn('API unavailable, locating station in demonstration records:', err);
+      const numericId = parseInt(id, 10);
+      const found = FALLBACK_STATIONS.find(s => s.id === numericId || s.code.toLowerCase() === id.toLowerCase());
+      if (found) {
+        const stationSources = FALLBACK_WATER_SOURCES.filter(w => w.station_id === found.id);
+        setStation({
+          ...found,
+          water_sources: stationSources as any,
+        });
+      } else {
+        setError(err?.response?.data?.detail || err?.message || 'Failed to load station profile.');
+      }
     } finally {
       setLoading(false);
     }

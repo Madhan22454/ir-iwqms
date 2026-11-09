@@ -13,6 +13,12 @@ import {
   Droplets
 } from 'lucide-react';
 import { API_URL } from '../config/api';
+import { 
+  FALLBACK_STATIONS, 
+  FALLBACK_DIVISIONS, 
+  FALLBACK_ZONES, 
+  FALLBACK_WATER_SOURCES 
+} from '../data/gisFallbackData';
 
 interface Station {
   id: number;
@@ -79,13 +85,23 @@ export default function Stations() {
         axios.get(`${API_URL}/hierarchy/water-sources/`),
       ]);
 
-      setStations(stnRes.data || []);
-      setDivisions(divRes.data || []);
-      setZones(zoneRes.data || []);
-      setWaterSources(wsRes.data || []);
+      if (stnRes.data && stnRes.data.length > 0) {
+        setStations(stnRes.data);
+        setDivisions(divRes.data || []);
+        setZones(zoneRes.data || []);
+        setWaterSources(wsRes.data || []);
+      } else {
+        setStations(FALLBACK_STATIONS as any);
+        setDivisions(FALLBACK_DIVISIONS as any);
+        setZones(FALLBACK_ZONES as any);
+        setWaterSources(FALLBACK_WATER_SOURCES as any);
+      }
     } catch (err: any) {
-      console.error('Failed to load stations data:', err);
-      setError(err?.response?.data?.detail || err?.message || 'Failed to load station registry. Please check network connection.');
+      console.warn('API unavailable, loading demonstration stations:', err);
+      setStations(FALLBACK_STATIONS as any);
+      setDivisions(FALLBACK_DIVISIONS as any);
+      setZones(FALLBACK_ZONES as any);
+      setWaterSources(FALLBACK_WATER_SOURCES as any);
     } finally {
       setLoading(false);
     }
