@@ -5,7 +5,7 @@ import {
   Search, X, ChevronRight, AlertTriangle, 
   ShieldAlert, Droplets, Compass,
   RefreshCw, ArrowUpRight, AlertCircle, CheckCircle2, Clock,
-  Maximize2, Minimize2, Map as MapIcon, Train, FileText
+  Maximize2, Minimize2, Map as MapIcon, Train
 } from 'lucide-react';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
@@ -28,6 +28,7 @@ import {
   FALLBACK_ZONES 
 } from '../data/gisFallbackData';
 import { INDIA_SOI_BOUNDARY } from '../data/indiaBoundaryGeojson';
+import { INDIA_OFFICIAL_STATES_GEOJSON } from '../data/indiaOfficialStatesGeojson';
 import { INDIAN_RAILWAY_TRUNK_CORRIDORS } from '../data/indiaRailwayCorridors';
 
 // Status styling configuration
@@ -86,37 +87,30 @@ const WS_STATUS_MAP: Record<string, string> = {
   'COMPLIANT': 'COMPLIANT'
 };
 
-export type BasemapKey = 'satellite' | 'railway' | 'osm' | 'humanitarian' | 'topo';
+export type BasemapKey = 'india_clean' | 'satellite' | 'street' | 'topo';
 
 // Official Survey of India Compliant Basemap Providers (NO API KEY REQUIRED)
 const BASEMAP_TILES: Record<string, { name: string; url: string; subdomains: string[]; maxZoom: number; attribution: string }> = {
-  satellite: {
-    name: 'Satellite Aerial (Compliant)',
-    url: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
-    subdomains: [],
-    maxZoom: 18,
-    attribution: 'Tiles &copy; Esri World Imagery &mdash; Survey of India Sovereign Boundary'
-  },
-  railway: {
-    name: 'Official Railway Network',
+  india_clean: {
+    name: 'Official India Map',
     url: '',
     subdomains: [],
     maxZoom: 18,
-    attribution: 'Official Indian Railways Map &copy; Indian Railways / Maps of India'
+    attribution: 'Official Sovereign Map of India &copy; Survey of India'
   },
-  osm: {
+  satellite: {
+    name: 'Satellite Aerial (Clean)',
+    url: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
+    subdomains: [],
+    maxZoom: 18,
+    attribution: 'Tiles &copy; Esri World Imagery &mdash; Survey of India Demarcation'
+  },
+  street: {
     name: 'Street Map (SOI Corrected)',
     url: 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
     subdomains: ['a', 'b', 'c'],
     maxZoom: 19,
     attribution: '&copy; OpenStreetMap contributors &mdash; Corrected with Survey of India PMTiles'
-  },
-  humanitarian: {
-    name: 'Humanitarian / Terrain',
-    url: 'https://{s}.tile.openstreetmap.fr/hot/{z}/{x}/{y}.png',
-    subdomains: ['a', 'b', 'c'],
-    maxZoom: 19,
-    attribution: '&copy; OpenStreetMap contributors, Humanitarian Team'
   },
   topo: {
     name: 'Topographic Relief',
@@ -134,9 +128,8 @@ export default function GISMap() {
   const mapInstanceRef = useRef<L.Map | null>(null);
   const clusterGroupRef = useRef<any>(null);
   const activeTileLayerRef = useRef<L.TileLayer | null>(null);
-  const railwayOverlayRef = useRef<L.ImageOverlay | null>(null);
+  const statesLayerRef = useRef<L.GeoJSON | null>(null);
   const railwayCorridorsRef = useRef<L.LayerGroup | null>(null);
-  const northernLabelsRef = useRef<L.LayerGroup | null>(null);
 
   // Data state
   const [loading, setLoading] = useState(true);
@@ -152,10 +145,9 @@ export default function GISMap() {
   const [searchQuery, setSearchQuery] = useState('');
   const [filterStatus, setFilterStatus] = useState<string>('ALL');
   const [filterDivision, setFilterDivision] = useState<string>('ALL');
-  const [activeBasemap, setActiveBasemap] = useState<BasemapKey>('satellite');
+  const [activeBasemap, setActiveBasemap] = useState<BasemapKey>('india_clean');
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [showCorridors, setShowCorridors] = useState(true);
-  const [showOfficialMapModal, setShowOfficialMapModal] = useState(false);
   const [copiedCoords, setCopiedCoords] = useState(false);
 
   // Toggle true Fullscreen mode
@@ -320,85 +312,60 @@ export default function GISMap() {
     L.control.zoom({ position: 'bottomright' }).addTo(map);
 
     // Initial tile layer (Esri Satellite Aerial - 100% Free of disputed lines)
-    const initialConfig = BASEMAP_TILES.satellite;
-    const initialTile = L.tileLayer(initialConfig.url, {
-      subdomains: initialConfig.subdomains,
-      maxZoom: initialConfig.maxZoom,
-      attribution: initialConfig.attribution
+    // 1. Official Survey of India State Boundaries (From Official India SVG)
+    const stateLayer = L.geoJSON(INDIA_OFFICIAL_STATES_GEOJSON as any, {
+      style: () => ({
+        color: '#38bdf8',
+        weight: 1.2,
+        opacity: 0.7,
+        fillColor: '#0f172a',
+        fillOpacity: 0.94
+      }),
+      onEachFeature: (feature, layer) => {
+        const name = feature.properties?.name || 'State of India';
+        layer.bindTooltip(`
+          <div style="font-family: inherit; font-size: 11px; font-weight: 700; color: #38bdf8; padding: 2px;">
+            🇮🇳 ${name}
+          </div>
+        `, { sticky: true, className: 'custom-leaflet-tooltip' });
+        layer.on({
+          mouseover: (e) => {
+            const l = e.target;
+            l.setStyle({
+              weight: 2,
+              color: '#60a5fa',
+              fillColor: '#1e293b',
+              fillOpacity: 0.98
+            });
+          },
+          mouseout: (e) => {
+            stateLayer.resetStyle(e.target);
+          }
+        });
+      }
     }).addTo(map);
-    activeTileLayerRef.current = initialTile;
+    statesLayerRef.current = stateLayer;
 
-    // 1. Add Official Survey of India (SOI) Sovereign Boundary
-    // Outer Glow / Highlight
+    // 2. Sovereign Outer Boundary Glow & Stroke (100% Survey of India Demarcation)
     L.geoJSON(INDIA_SOI_BOUNDARY as any, {
       style: {
         color: '#0284c7',
-        weight: 6,
+        weight: 5,
         opacity: 0.45,
         fill: false,
       }
     }).addTo(map);
 
-    // Official Sovereign Boundary Stroke
     L.geoJSON(INDIA_SOI_BOUNDARY as any, {
       style: {
         color: '#0369a1',
-        weight: 3,
-        opacity: 0.95,
-        fillColor: '#0284c7',
-        fillOpacity: 0.03,
+        weight: 2.8,
+        opacity: 1.0,
+        fill: false,
       }
     }).addTo(map);
 
-    // Official Survey of India Sovereign Northern Territory Badges
-    const labelsGroup = L.layerGroup();
-    const NORTHERN_SECTORS = [
-      {
-        coords: [35.6, 75.2] as [number, number],
-        name: 'GILGIT-BALTISTAN SECTOR',
-        sub: 'UT of Jammu & Kashmir • Sovereign Republic of India'
-      },
-      {
-        coords: [34.8, 79.2] as [number, number],
-        name: 'AKSAI CHIN SECTOR',
-        sub: 'UT of Ladakh • Sovereign Republic of India'
-      },
-      {
-        coords: [34.0, 74.8] as [number, number],
-        name: 'JAMMU & KASHMIR (UT)',
-        sub: 'Sovereign Republic of India'
-      },
-      {
-        coords: [34.2, 77.6] as [number, number],
-        name: 'LADAKH (UT)',
-        sub: 'Sovereign Republic of India'
-      }
-    ];
-
-    NORTHERN_SECTORS.forEach(sec => {
-      const badge = L.marker(sec.coords, {
-        interactive: false,
-        icon: L.divIcon({
-          className: 'soi-territory-badge',
-          html: `
-            <div style="background: rgba(15, 23, 42, 0.88); backdrop-filter: blur(6px); border: 1px solid rgba(56, 189, 248, 0.6); border-radius: 6px; padding: 2px 7px; box-shadow: 0 4px 12px rgba(0,0,0,0.5); text-align: center; white-space: nowrap; pointer-events: none;">
-              <div style="display: flex; align-items: center; justify-content: center; gap: 4px;">
-                <span style="font-size: 10px;">🇮🇳</span>
-                <span style="font-size: 9px; font-weight: 800; color: #ffffff; letter-spacing: 0.4px;">${sec.name}</span>
-              </div>
-              <div style="font-size: 7.5px; font-weight: 600; color: #7dd3fc; margin-top: 1px;">${sec.sub}</div>
-            </div>
-          `,
-          iconSize: [150, 32],
-          iconAnchor: [75, 16]
-        })
-      });
-      labelsGroup.addLayer(badge);
-    });
-    labelsGroup.addTo(map);
-    northernLabelsRef.current = labelsGroup;
-
-    // 2. Add Indian Railways Broad Gauge Trunk Corridors
+    // 3. Add Indian Railways Broad Gauge Trunk Corridors
     const corridorLayer = L.layerGroup();
     INDIAN_RAILWAY_TRUNK_CORRIDORS.forEach(corridor => {
       const line = L.polyline(corridor.coordinates, {
@@ -477,9 +444,8 @@ export default function GISMap() {
       mapInstanceRef.current = null;
       clusterGroupRef.current = null;
       activeTileLayerRef.current = null;
-      railwayOverlayRef.current = null;
+      statesLayerRef.current = null;
       railwayCorridorsRef.current = null;
-      northernLabelsRef.current = null;
     };
   }, []);
 
@@ -495,59 +461,65 @@ export default function GISMap() {
     }
   }, [showCorridors]);
 
-  // 2. Handle Basemap Tile Layer Switching
+  // 2. Handle Basemap Layer Switching
   useEffect(() => {
     const map = mapInstanceRef.current;
     if (!map) return;
 
-    // Clean up active overlay or tile layer
+    // Clean up active tile layer
     if (activeTileLayerRef.current) {
       map.removeLayer(activeTileLayerRef.current);
       activeTileLayerRef.current = null;
     }
-    if (railwayOverlayRef.current) {
-      map.removeLayer(railwayOverlayRef.current);
-      railwayOverlayRef.current = null;
-    }
 
-    if (activeBasemap === 'railway') {
-      // Official Indian Railways Sovereign Map Image Overlay
-      // Calibrated bounding box across India: Lat 6.65 to 37.35, Lng 68.1 to 97.45
-      const railwayBounds: L.LatLngBoundsExpression = [[6.65, 68.1], [37.35, 97.45]];
-      const overlay = L.imageOverlay('/india-railway-map.jpg', railwayBounds, {
-        opacity: 0.98,
-        interactive: false,
-        zIndex: 1
-      }).addTo(map);
-      overlay.bringToBack();
-      railwayOverlayRef.current = overlay;
-    } else {
-      const config = BASEMAP_TILES[activeBasemap];
-      let newTile: L.TileLayer;
+    const stateLayer = statesLayerRef.current;
 
-      if (
-        (activeBasemap === 'osm' || activeBasemap === 'humanitarian') &&
-        typeof (L.tileLayer as any).indiaBoundaryCorrected === 'function'
-      ) {
-        // Use dynamically corrected tiles (erases de facto lines, paints SOI border)
-        newTile = (L.tileLayer as any).indiaBoundaryCorrected(config.url, {
-          subdomains: config.subdomains,
-          maxZoom: config.maxZoom,
-          attribution: config.attribution,
-          pmtilesUrl: '/india_boundary_corrections.pmtiles',
-          fallbackOnCorrectionFailure: true
+    if (activeBasemap === 'india_clean') {
+      // Pure Sovereign Vector Map of India (Clean slate - NO foreign countries or distorted borders)
+      if (stateLayer) {
+        stateLayer.setStyle({
+          color: '#38bdf8',
+          weight: 1.2,
+          opacity: 0.7,
+          fillColor: '#0f172a',
+          fillOpacity: 0.94
         });
-      } else {
-        newTile = L.tileLayer(config.url, {
-          subdomains: config.subdomains,
-          maxZoom: config.maxZoom,
-          attribution: config.attribution
+      }
+    } else {
+      // Tile layer behind official India map (Satellite, Street, Topo)
+      if (stateLayer) {
+        stateLayer.setStyle({
+          color: '#38bdf8',
+          weight: 1.4,
+          opacity: 0.85,
+          fillColor: '#0f172a',
+          fillOpacity: 0.25
         });
       }
 
-      newTile.addTo(map);
-      newTile.bringToBack();
-      activeTileLayerRef.current = newTile;
+      const config = BASEMAP_TILES[activeBasemap];
+      if (config && config.url) {
+        let newTile: L.TileLayer;
+        if (activeBasemap === 'street' && typeof (L.tileLayer as any).indiaBoundaryCorrected === 'function') {
+          newTile = (L.tileLayer as any).indiaBoundaryCorrected(config.url, {
+            subdomains: config.subdomains,
+            maxZoom: config.maxZoom,
+            attribution: config.attribution,
+            pmtilesUrl: '/india_boundary_corrections.pmtiles',
+            fallbackOnCorrectionFailure: true
+          });
+        } else {
+          newTile = L.tileLayer(config.url, {
+            subdomains: config.subdomains,
+            maxZoom: config.maxZoom,
+            attribution: config.attribution
+          });
+        }
+
+        newTile.addTo(map);
+        newTile.bringToBack();
+        activeTileLayerRef.current = newTile;
+      }
     }
   }, [activeBasemap]);
 
@@ -755,16 +727,6 @@ export default function GISMap() {
               <span className="hidden lg:inline">Railway Lines</span>
             </button>
 
-            {/* OFFICIAL RAILWAY CHART BUTTON */}
-            <button
-              onClick={() => setShowOfficialMapModal(true)}
-              title="Inspect Official Indian Railways Sovereign Chart"
-              className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-emerald-600/30 hover:bg-emerald-600/50 border border-emerald-500/50 text-xs font-bold text-emerald-200 transition-all shadow-sm"
-            >
-              <FileText className="w-3.5 h-3.5 text-emerald-400" />
-              <span className="hidden md:inline">Official IR Chart</span>
-            </button>
-
             {/* FULLSCREEN TOGGLE BUTTON */}
             <button
               onClick={toggleFullscreen}
@@ -874,26 +836,25 @@ export default function GISMap() {
           </div>
         )}
 
-        {/* FLOATING BASEMAP SELECTOR (100% FREE OPEN-SOURCE TILES) */}
+        {/* FLOATING BASEMAP SELECTOR */}
         <div className="absolute top-4 left-4 z-10 flex flex-col gap-2">
           <div className="bg-slate-900/95 backdrop-blur-md border border-slate-700/80 rounded-xl p-1 shadow-2xl flex items-center gap-1 flex-wrap">
+            <button
+              onClick={() => setActiveBasemap('india_clean')}
+              className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all flex items-center gap-1 ${activeBasemap === 'india_clean' ? 'bg-blue-600 text-white shadow' : 'text-slate-400 hover:text-white'}`}
+            >
+              <Compass className="w-3 h-3 text-sky-300" />
+              <span>Official India Map</span>
+            </button>
             <button
               onClick={() => setActiveBasemap('satellite')}
               className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all flex items-center gap-1 ${activeBasemap === 'satellite' ? 'bg-blue-600 text-white shadow' : 'text-slate-400 hover:text-white'}`}
             >
-              <Compass className="w-3 h-3 text-sky-300" />
-              <span>Satellite (Clean)</span>
+              <span>Satellite Imagery</span>
             </button>
             <button
-              onClick={() => setActiveBasemap('railway')}
-              className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all flex items-center gap-1 ${activeBasemap === 'railway' ? 'bg-indigo-600 text-white shadow' : 'text-slate-400 hover:text-white'}`}
-            >
-              <Train className="w-3 h-3 text-amber-300" />
-              <span>Railway Chart</span>
-            </button>
-            <button
-              onClick={() => setActiveBasemap('osm')}
-              className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all flex items-center gap-1 ${activeBasemap === 'osm' ? 'bg-blue-600 text-white shadow' : 'text-slate-400 hover:text-white'}`}
+              onClick={() => setActiveBasemap('street')}
+              className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all flex items-center gap-1 ${activeBasemap === 'street' ? 'bg-blue-600 text-white shadow' : 'text-slate-400 hover:text-white'}`}
             >
               <MapIcon className="w-3 h-3" />
               <span>Street (SOI Corrected)</span>
@@ -908,7 +869,7 @@ export default function GISMap() {
 
           <div className="bg-slate-900/90 backdrop-blur-md border border-sky-500/40 rounded-xl px-2.5 py-1 shadow-2xl flex items-center gap-1.5 text-[11px] font-bold text-sky-200 w-fit">
             <span className="w-2 h-2 rounded-full bg-sky-400 animate-pulse"></span>
-            <span>Survey of India Compliant Sovereign Boundary</span>
+            <span>Survey of India Compliant Sovereign Demarcation</span>
           </div>
         </div>
 
@@ -1303,80 +1264,6 @@ export default function GISMap() {
           scrollbar-width: none;
         }
       `}</style>
-
-      {/* ----------------- OFFICIAL RAILWAY MAP FULL-SCREEN MODAL ----------------- */}
-      {showOfficialMapModal && (
-        <div className="fixed inset-0 z-50 bg-slate-950/90 backdrop-blur-md flex items-center justify-center p-4">
-          <div className="bg-slate-900 border border-slate-700/80 rounded-2xl max-w-4xl w-full max-h-[90vh] flex flex-col shadow-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-200">
-            {/* Modal Header */}
-            <div className="p-4 bg-slate-800/80 border-b border-slate-700/80 flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <div className="p-2 rounded-xl bg-blue-600/20 border border-blue-500/30 text-blue-400">
-                  <Train className="w-5 h-5" />
-                </div>
-                <div>
-                  <h3 className="text-base font-bold text-white flex items-center gap-2">
-                    <span>Official Indian Railways Integrated Network Chart</span>
-                    <span className="px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 text-[10px] font-mono">
-                      SOI COMPLIANT
-                    </span>
-                  </h3>
-                  <p className="text-xs text-slate-400 mt-0.5">
-                    Ministry of Railways Sovereign Demarcations • Complete Sovereign Boundary of India
-                  </p>
-                </div>
-              </div>
-
-              <div className="flex items-center gap-2">
-                <a 
-                  href="/india-railway-map.jpg" 
-                  target="_blank" 
-                  rel="noreferrer" 
-                  className="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 border border-slate-700 text-xs font-semibold text-slate-200 flex items-center gap-1.5 transition-colors"
-                >
-                  <ArrowUpRight className="w-3.5 h-3.5" />
-                  <span>Open Full Resolution</span>
-                </a>
-                <button
-                  onClick={() => setShowOfficialMapModal(false)}
-                  className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition-colors"
-                >
-                  <X className="w-5 h-5" />
-                </button>
-              </div>
-            </div>
-
-            {/* Modal Body: High Resolution Map Preview */}
-            <div className="p-4 flex-1 overflow-auto flex items-center justify-center bg-slate-950/80">
-              <div className="relative max-w-full rounded-xl overflow-hidden border border-slate-800 shadow-xl bg-white">
-                <img 
-                  src="/india-railway-map.jpg" 
-                  alt="Official Indian Railways Map" 
-                  className="max-h-[70vh] w-auto object-contain"
-                />
-              </div>
-            </div>
-
-            {/* Modal Footer Note */}
-            <div className="p-3 bg-slate-900 border-t border-slate-800/80 text-xs text-slate-400 flex items-center justify-between">
-              <div className="flex items-center gap-2 text-[11px]">
-                <span className="text-emerald-400 font-bold">✓ Statutory Verification:</span>
-                <span>Includes 100% of Jammu, Kashmir, Ladakh, Aksai Chin, and Arunachal Pradesh without foreign line-of-control alterations.</span>
-              </div>
-              <button 
-                onClick={() => {
-                  setShowOfficialMapModal(false);
-                  setActiveBasemap('railway');
-                }}
-                className="px-3 py-1 bg-blue-600 hover:bg-blue-500 text-white rounded-lg font-bold text-xs transition-colors flex items-center gap-1"
-              >
-                <span>Apply as Live Map Layer</span>
-                <ChevronRight className="w-3.5 h-3.5" />
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
 
     </div>
   );
