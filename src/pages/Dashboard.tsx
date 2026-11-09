@@ -1,11 +1,6 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import axios from 'axios';
-import L from 'leaflet';
-import 'leaflet/dist/leaflet.css';
-import 'leaflet.markercluster';
-import 'leaflet.markercluster/dist/MarkerCluster.css';
-import 'leaflet.markercluster/dist/MarkerCluster.Default.css';
 import {
   Train,
   Droplets,
@@ -25,8 +20,7 @@ import {
 } from 'lucide-react';
 import { API_URL } from '../config/api';
 import { FALLBACK_STATIONS } from '../data/gisFallbackData';
-import { INDIA_SOI_BOUNDARY } from '../data/indiaBoundaryGeojson';
-import { INDIA_OFFICIAL_STATES_GEOJSON } from '../data/indiaOfficialStatesGeojson';
+import { INDIA_SVG_STATES, INDIA_SVG_VIEWBOX, geoToSvgCoords } from '../data/indiaSvgData';
 import { INDIAN_RAILWAY_TRUNK_CORRIDORS } from '../data/indiaRailwayCorridors';
 
 const DEFAULT_SUMMARY: DashboardSummaryData = {
@@ -153,9 +147,7 @@ interface DashboardSummaryData {
 
 export function Dashboard() {
   const navigate = useNavigate();
-  const mapContainerRef = useRef<HTMLDivElement>(null);
-  const mapInstanceRef = useRef<L.Map | null>(null);
-  const clusterGroupRef = useRef<L.MarkerClusterGroup | null>(null);
+  const [hoveredStation, setHoveredStation] = useState<any>(null);
 
   const [summary, setSummary] = useState<DashboardSummaryData | null>(null);
   const [stations, setStations] = useState<any[]>([]);
@@ -191,116 +183,6 @@ export function Dashboard() {
   useEffect(() => {
     fetchData();
   }, []);
-
-  // Initialize mini-map (once on mount, cleanup on unmount)
-  useEffect(() => {
-    if (!mapContainerRef.current) return;
-
-    const map = L.map(mapContainerRef.current, {
-      center: [21.5, 80.0],
-      zoom: 4,
-      zoomControl: true,
-      attributionControl: false,
-    });
-
-    // 1. Official Survey of India State Boundaries (From Official India SVG)
-    L.geoJSON(INDIA_OFFICIAL_STATES_GEOJSON as any, {
-      style: {
-        color: '#38bdf8',
-        weight: 1.0,
-        opacity: 0.65,
-        fillColor: '#0f172a',
-        fillOpacity: 0.94,
-      }
-    }).addTo(map);
-
-    // 2. Sovereign Outer Boundary Glow & Stroke
-    L.geoJSON(INDIA_SOI_BOUNDARY as any, {
-      style: {
-        color: '#0284c7',
-        weight: 5,
-        opacity: 0.45,
-        fill: false,
-      }
-    }).addTo(map);
-
-    L.geoJSON(INDIA_SOI_BOUNDARY as any, {
-      style: {
-        color: '#0369a1',
-        weight: 2.5,
-        opacity: 0.95,
-        fill: false,
-      }
-    }).addTo(map);
-
-    // Indian Railways Trunk Corridors
-    INDIAN_RAILWAY_TRUNK_CORRIDORS.forEach(corridor => {
-      L.polyline(corridor.coordinates, {
-        color: '#3b82f6',
-        weight: 2,
-        opacity: 0.75,
-      }).addTo(map);
-      L.polyline(corridor.coordinates, {
-        color: '#ffffff',
-        weight: 1,
-        dashArray: '4, 6',
-        opacity: 0.85,
-      }).addTo(map);
-    });
-
-    const clusterGroup = L.markerClusterGroup({
-      maxClusterRadius: 40,
-      spiderfyOnMaxZoom: true,
-      showCoverageOnHover: false,
-    });
-    map.addLayer(clusterGroup);
-
-    mapInstanceRef.current = map;
-    clusterGroupRef.current = clusterGroup;
-
-    // Ensure tiles render after layout settles
-    setTimeout(() => map.invalidateSize(), 250);
-
-    return () => {
-      map.remove();
-      mapInstanceRef.current = null;
-      clusterGroupRef.current = null;
-    };
-  }, []);
-
-  // Update mini-map markers when stations data changes
-  useEffect(() => {
-    if (!clusterGroupRef.current || !mapInstanceRef.current || stations.length === 0) return;
-
-    clusterGroupRef.current.clearLayers();
-
-    stations.forEach(stn => {
-      if (stn.gps_lat && stn.gps_long) {
-        const marker = L.circleMarker([stn.gps_lat, stn.gps_long], {
-          radius: 6,
-          fillColor: '#1e3a8a',
-          color: '#ffffff',
-          weight: 2,
-          opacity: 1,
-          fillOpacity: 0.85,
-        });
-
-        marker.bindPopup(`
-          <div style="font-family: inherit; font-size: 12px; padding: 4px;">
-            <strong style="color: #1e3a8a; font-size: 13px;">${stn.name} (${stn.code})</strong>
-            <div style="color: #64748b; margin-top: 4px;">Category: ${stn.category || 'Standard'}</div>
-            <div style="margin-top: 6px;">
-              <a href="/stations/${stn.id}" style="color: #2563eb; font-weight: 700; text-decoration: none;">
-                View Station Details &rarr;
-              </a>
-            </div>
-          </div>
-        `);
-
-        clusterGroupRef.current?.addLayer(marker);
-      }
-    });
-  }, [stations]);
 
   return (
     <div style={{ height: '100%', overflowY: 'auto', background: '#f8fafc', padding: '24px 28px' }}>
@@ -756,15 +638,18 @@ export function Dashboard() {
 
         </div>
 
-        {/* Embedded Compact Mini-Map */}
+        {/* Pan-India Sovereign Vector Mini-Map */}
         <div style={{ background: '#ffffff', borderRadius: 12, border: '1px solid #e2e8f0', padding: 20, boxShadow: '0 1px 3px rgba(0,0,0,0.02)' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
             <div>
-              <h3 style={{ fontSize: 15, fontWeight: 800, color: '#0f172a', margin: 0 }}>
-                Pan-India Railway Water Surveillance GIS Map
-              </h3>
-              <p style={{ fontSize: 12, color: '#64748b', margin: '2px 0 0 0' }}>
-                Real-time geographic distribution of station water sampling points
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <div style={{ width: 8, height: 8, borderRadius: '50%', background: '#10b981', boxShadow: '0 0 10px #10b981' }} />
+                <h3 style={{ fontSize: 15, fontWeight: 800, color: '#0f172a', margin: 0 }}>
+                  Pan-India Railway Water Surveillance GIS Map
+                </h3>
+              </div>
+              <p style={{ fontSize: 12, color: '#64748b', margin: '4px 0 0 0' }}>
+                Real-time geographic distribution of station water sampling points &bull; Authentic Survey of India Demarcation
               </p>
             </div>
             <Link
@@ -788,15 +673,266 @@ export function Dashboard() {
           </div>
 
           <div
-            ref={mapContainerRef}
             style={{
+              position: 'relative',
               width: '100%',
-              height: 320,
-              borderRadius: 8,
-              border: '1px solid #e2e8f0',
-              overflow: 'hidden'
+              height: 380,
+              borderRadius: 10,
+              background: 'radial-gradient(ellipse at center, #0f172a 0%, #090e17 100%)',
+              border: '1px solid #1e293b',
+              overflow: 'hidden',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center'
             }}
-          />
+          >
+            <svg
+              viewBox={INDIA_SVG_VIEWBOX}
+              style={{
+                width: '100%',
+                height: '100%',
+                maxHeight: '370px',
+                filter: 'drop-shadow(0 6px 18px rgba(0,0,0,0.5))'
+              }}
+            >
+              <defs>
+                <filter id="mini-glow" x="-20%" y="-20%" width="140%" height="140%">
+                  <feGaussianBlur stdDeviation="3" result="blur" />
+                  <feComposite in="SourceGraphic" in2="blur" operator="over" />
+                </filter>
+              </defs>
+
+              {/* 36 Authentic Survey of India States */}
+              <g id="mini-india-states">
+                {INDIA_SVG_STATES.map((state) => (
+                  <path
+                    key={state.id}
+                    d={state.d}
+                    fill="#1e293b"
+                    stroke="#334155"
+                    strokeWidth="0.75"
+                    strokeLinejoin="round"
+                    style={{ transition: 'fill 0.2s ease' }}
+                  >
+                    <title>{state.name}</title>
+                  </path>
+                ))}
+              </g>
+
+              {/* Indian Railways Trunk Corridors */}
+              <g id="mini-railway-corridors">
+                {INDIAN_RAILWAY_TRUNK_CORRIDORS.map((corridor) => {
+                  const points = corridor.coordinates.map(([lat, lng]) => {
+                    const { x, y } = geoToSvgCoords(lat, lng);
+                    return `${x.toFixed(2)},${y.toFixed(2)}`;
+                  }).join(' ');
+
+                  return (
+                    <g key={corridor.id}>
+                      <polyline
+                        points={points}
+                        fill="none"
+                        stroke="#2563eb"
+                        strokeWidth="1.6"
+                        strokeOpacity="0.7"
+                      />
+                      <polyline
+                        points={points}
+                        fill="none"
+                        stroke="#93c5fd"
+                        strokeWidth="0.8"
+                        strokeDasharray="3 3"
+                        strokeOpacity="0.85"
+                      />
+                    </g>
+                  );
+                })}
+              </g>
+
+              {/* Station Sampling Pins */}
+              <g id="mini-station-pins">
+                {stations.map((stn) => {
+                  if (!stn.gps_lat || !stn.gps_long) return null;
+                  const { x, y } = geoToSvgCoords(stn.gps_lat, stn.gps_long);
+                  const isHovered = hoveredStation?.id === stn.id;
+                  
+                  // Color coding
+                  const isUrgent = stn.current_status === 'OVERDUE' || stn.current_status === 'CRITICAL_UNFIT';
+                  const pinColor = isUrgent ? '#ef4444' : (stn.current_status === 'ATTENTION' ? '#f59e0b' : '#10b981');
+
+                  return (
+                    <g
+                      key={stn.id}
+                      transform={`translate(${x}, ${y})`}
+                      className="cursor-pointer"
+                      style={{ cursor: 'pointer' }}
+                      onMouseEnter={() => setHoveredStation(stn)}
+                      onMouseLeave={() => setHoveredStation(null)}
+                      onClick={() => navigate(`/stations/${stn.id}`)}
+                    >
+                      {/* Pulse ring for urgent stations */}
+                      {isUrgent && (
+                        <circle
+                          r="10"
+                          fill="none"
+                          stroke={pinColor}
+                          strokeWidth="1.5"
+                          opacity="0.6"
+                        >
+                          <animate
+                            attributeName="r"
+                            from="4"
+                            to="14"
+                            dur="1.8s"
+                            repeatCount="indefinite"
+                          />
+                          <animate
+                            attributeName="opacity"
+                            from="0.8"
+                            to="0"
+                            dur="1.8s"
+                            repeatCount="indefinite"
+                          />
+                        </circle>
+                      )}
+
+                      {/* Station Core Marker */}
+                      <circle
+                        r={isHovered ? 7 : 4.5}
+                        fill={pinColor}
+                        stroke="#ffffff"
+                        strokeWidth={isHovered ? 2 : 1.5}
+                        filter="url(#mini-glow)"
+                      />
+
+                      {/* Station Code Badge for major junctions */}
+                      {(isHovered || ['NDLS', 'CSMT', 'HWH', 'MAS', 'GHY', 'SBC', 'TVC'].includes(stn.code)) && (
+                        <g transform="translate(0, -9)">
+                          <rect
+                            x={-14}
+                            y={-10}
+                            width={28}
+                            height={12}
+                            rx={3}
+                            fill="#090e17"
+                            stroke="#475569"
+                            strokeWidth="0.8"
+                            opacity="0.9"
+                          />
+                          <text
+                            x={0}
+                            y={-1.5}
+                            textAnchor="middle"
+                            fill="#f8fafc"
+                            fontSize="7.5"
+                            fontWeight="800"
+                            fontFamily="monospace"
+                          >
+                            {stn.code}
+                          </text>
+                        </g>
+                      )}
+                    </g>
+                  );
+                })}
+              </g>
+            </svg>
+
+            {/* Hover Tooltip Overlay */}
+            {hoveredStation && (
+              <div
+                style={{
+                  position: 'absolute',
+                  top: 14,
+                  right: 14,
+                  background: 'rgba(15, 23, 42, 0.95)',
+                  backdropFilter: 'blur(8px)',
+                  border: '1px solid rgba(148, 163, 184, 0.25)',
+                  borderRadius: 10,
+                  padding: '10px 14px',
+                  color: '#ffffff',
+                  boxShadow: '0 10px 25px rgba(0,0,0,0.5)',
+                  minWidth: 200,
+                  pointerEvents: 'none',
+                  zIndex: 20
+                }}
+              >
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
+                  <span style={{ fontSize: 9.5, fontWeight: 800, color: '#38bdf8', fontFamily: 'monospace' }}>
+                    {hoveredStation.code}
+                  </span>
+                  <span style={{ fontSize: 9.5, color: '#94a3b8' }}>
+                    {hoveredStation.zone || 'IR'} / {hoveredStation.division || 'HQ'}
+                  </span>
+                </div>
+                <div style={{ fontSize: 13, fontWeight: 800, color: '#ffffff', marginBottom: 4 }}>
+                  {hoveredStation.name}
+                </div>
+                <div style={{ fontSize: 10, color: '#60a5fa', fontWeight: 600 }}>
+                  Click to inspect station profile &rarr;
+                </div>
+              </div>
+            )}
+
+            {/* Mini Map Legend */}
+            <div
+              style={{
+                position: 'absolute',
+                bottom: 10,
+                left: 12,
+                background: 'rgba(15, 23, 42, 0.85)',
+                backdropFilter: 'blur(6px)',
+                border: '1px solid rgba(255, 255, 255, 0.1)',
+                borderRadius: 8,
+                padding: '6px 10px',
+                display: 'flex',
+                alignItems: 'center',
+                gap: 12,
+                fontSize: 10,
+                color: '#cbd5e1'
+              }}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+                <span style={{ width: 7, height: 7, borderRadius: '50%', background: '#10b981' }} />
+                <span>Compliant</span>
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+                <span style={{ width: 7, height: 7, borderRadius: '50%', background: '#f59e0b' }} />
+                <span>Attention</span>
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+                <span style={{ width: 7, height: 7, borderRadius: '50%', background: '#ef4444' }} />
+                <span>Urgent / Overdue</span>
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+                <span style={{ width: 14, height: 2, background: '#2563eb' }} />
+                <span>Rail Corridors</span>
+              </div>
+            </div>
+
+            {/* Official SOI Badge */}
+            <div
+              style={{
+                position: 'absolute',
+                top: 10,
+                left: 12,
+                background: 'rgba(15, 23, 42, 0.85)',
+                backdropFilter: 'blur(6px)',
+                border: '1px solid rgba(56, 189, 248, 0.3)',
+                borderRadius: 6,
+                padding: '4px 8px',
+                fontSize: 10,
+                fontWeight: 700,
+                color: '#38bdf8',
+                display: 'flex',
+                alignItems: 'center',
+                gap: 5
+              }}
+            >
+              <ShieldAlert size={12} />
+              <span>Survey of India Sovereign Map (Complete J&amp;K, Ladakh, Arunachal)</span>
+            </div>
+          </div>
         </div>
 
         {/* Recent Alerts & Recent Lab Results 2-Column Feed */}
