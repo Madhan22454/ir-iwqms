@@ -22,6 +22,7 @@ import { API_URL } from '../config/api';
 import { FALLBACK_STATIONS } from '../data/gisFallbackData';
 import { INDIA_SVG_STATES, INDIA_SVG_VIEWBOX, geoToSvgCoords, IRI_ATLAS_STATE_COLORS } from '../data/indiaSvgData';
 import { INDIAN_RAILWAY_TRUNK_CORRIDORS } from '../data/indiaRailwayCorridors';
+import { ALL_INDIAN_RAIL_STATIONS } from '../data/allIndianRailStations';
 
 const DEFAULT_SUMMARY: DashboardSummaryData = {
   infrastructure: {
@@ -696,6 +697,15 @@ export function Dashboard() {
                 filter: 'drop-shadow(0 6px 18px rgba(0,0,0,0.18))'
               }}
             >
+              <defs>
+                <filter id="mini-station-glow" x="-50%" y="-50%" width="200%" height="200%">
+                  <feGaussianBlur in="SourceGraphic" stdDeviation="3.0" result="blur" />
+                  <feMerge>
+                    <feMergeNode in="blur" />
+                    <feMergeNode in="SourceGraphic" />
+                  </feMerge>
+                </filter>
+              </defs>
               {/* 36 Authentic Survey of India States in IndiaRailInfo Atlas Pastel Tones */}
               <g id="mini-india-states">
                 {INDIA_SVG_STATES.map((state) => (
@@ -761,7 +771,43 @@ export function Dashboard() {
                 })}
               </g>
 
-              {/* Station Sampling Pins (Authentic IndiaRailInfo Junction Nodes) */}
+              {/* Regular Railway Network Stations (Small Black Dots with Name) */}
+              <g id="mini-regular-stations">
+                {ALL_INDIAN_RAIL_STATIONS
+                  .filter(s => !stations.some(st => st.code?.toUpperCase() === s.code.toUpperCase()))
+                  .map((stn) => {
+                    const { x, y } = geoToSvgCoords(stn.lat, stn.lng);
+                    return (
+                      <g key={stn.code}>
+                        <circle
+                          cx={x}
+                          cy={y}
+                          r="1.7"
+                          fill="#0f172a"
+                          stroke="#ffffff"
+                          strokeWidth="0.5"
+                        />
+                        <text
+                          x={x}
+                          y={y - 3.2}
+                          textAnchor="middle"
+                          fill="#334155"
+                          fontSize="5.0"
+                          fontWeight="700"
+                          fontFamily="system-ui, -apple-system, sans-serif"
+                          paintOrder="stroke"
+                          stroke="#ffffff"
+                          strokeWidth="1.6"
+                          strokeLinejoin="round"
+                        >
+                          {stn.name.split(' ')[0]}
+                        </text>
+                      </g>
+                    );
+                  })}
+              </g>
+
+              {/* Monitored Stations with Water Quality Records (GLOWING) */}
               <g id="mini-station-pins">
                 {stations.map((stn) => {
                   if (!stn.gps_lat || !stn.gps_long) return null;
@@ -782,29 +828,37 @@ export function Dashboard() {
                       onMouseLeave={() => setHoveredStation(null)}
                       onClick={() => navigate(`/stations/${stn.id}`)}
                     >
-                      {/* Steady concentric halo ring for urgent stations (NO moving/drifting circles) */}
+                      {/* Radiant Glowing Aura */}
+                      <circle
+                        r={isHovered ? 12 : 8.5}
+                        fill={pinColor}
+                        fillOpacity="0.45"
+                        filter="url(#mini-station-glow)"
+                      />
+
+                      {/* Steady concentric halo ring for urgent stations */}
                       {isUrgent && (
                         <circle
                           r="8"
                           fill="none"
                           stroke={pinColor}
                           strokeWidth="1.2"
-                          strokeOpacity="0.7"
+                          strokeOpacity="0.75"
                           strokeDasharray="2 2"
                         />
                       )}
 
                       {/* Junction Ring */}
                       <circle
-                        r={isHovered ? 5.5 : 4}
+                        r={isHovered ? 5.5 : 4.2}
                         fill="#ffffff"
                         stroke={pinColor}
-                        strokeWidth={isHovered ? 2.2 : 1.8}
+                        strokeWidth={isHovered ? 2.4 : 1.9}
                       />
 
                       {/* Inner Telemetry Dot */}
                       <circle
-                        r={isHovered ? 2.6 : 1.8}
+                        r={isHovered ? 2.8 : 2.0}
                         fill={pinColor}
                       />
 
@@ -812,7 +866,7 @@ export function Dashboard() {
                       {(isHovered || ['NDLS', 'CSMT', 'HWH', 'MAS', 'GHY', 'SBC', 'TVC', 'ADI', 'NGP', 'LKO'].includes(stn.code)) && (
                         <text
                           x="0"
-                          y="-6"
+                          y="-6.5"
                           textAnchor="middle"
                           fill="#0f172a"
                           fontSize="6.8"
