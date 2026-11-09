@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import axios from 'axios';
 import {
   ShieldCheck, ShieldAlert, AlertTriangle, Clock,
-  Search, Filter, QrCode, FlaskConical, X, ChevronLeft, ChevronRight
+  Search, QrCode, FlaskConical, X, ChevronLeft, ChevronRight
 } from 'lucide-react';
 
 import { API_URL } from '../config/api';
@@ -91,46 +91,40 @@ export function HealthCard() {
   }, [sources]);
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', height: '100%', background: '#f8fafc' }}>
-      
-      {/* Header & Controls */}
-      <div style={{ padding: '24px 28px', background: 'white', borderBottom: '1px solid #e2e8f0' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: 16 }}>
+    <div className="ir-page">
+      <div className="ir-container space-y-6">
+        
+        {/* Header & Controls */}
+        <div className="ir-header-card flex items-center justify-between flex-wrap gap-4">
           <div>
-            <h2 style={{ fontSize: 24, fontWeight: 800, color: '#0f172a', margin: 0, letterSpacing: '-0.5px' }}>
-              Water Source Registry
+            <h2 className="text-2xl font-black tracking-tight" style={{ color: 'var(--text-primary)' }}>
+              Water Source Registry & Health Cards
             </h2>
-            <p style={{ fontSize: 13.5, color: '#64748b', marginTop: 4 }}>
-              Enterprise view of all monitored water sources across the network
+            <p className="text-sm font-medium mt-0.5" style={{ color: 'var(--text-secondary)' }}>
+              Enterprise view of all monitored water sources, bacteriological status & digital QR cards
             </p>
           </div>
           
-          <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
+          <div className="flex gap-3 flex-wrap">
             {/* Search */}
-            <div style={{ position: 'relative' }}>
-              <Search size={16} color="#94a3b8" style={{ position: 'absolute', left: 12, top: 11 }} />
+            <div className="relative">
+              <Search size={16} style={{ position: 'absolute', left: 12, top: 11, color: 'var(--text-muted)' }} />
               <input 
                 type="text" 
                 placeholder="Search ID, Station..." 
                 value={searchTerm}
                 onChange={e => setSearchTerm(e.target.value)}
-                style={{
-                  padding: '9px 12px 9px 36px', borderRadius: 8, border: '1px solid #cbd5e1',
-                  fontSize: 13, outline: 'none', width: 220, fontFamily: 'inherit'
-                }}
+                className="ir-input"
+                style={{ paddingLeft: 36, width: 200 }}
               />
             </div>
             
             {/* Status Filter */}
-            <div style={{ position: 'relative' }}>
-              <Filter size={16} color="#94a3b8" style={{ position: 'absolute', left: 12, top: 11 }} />
+            <div className="relative">
               <select 
                 value={statusFilter}
                 onChange={e => setStatusFilter(e.target.value)}
-                style={{
-                  padding: '9px 12px 9px 36px', borderRadius: 8, border: '1px solid #cbd5e1',
-                  fontSize: 13, outline: 'none', background: 'white', cursor: 'pointer', fontFamily: 'inherit'
-                }}
+                className="ir-input"
               >
                 <option value="ALL">All Statuses</option>
                 <option value="COMPLIANT">Compliant</option>
@@ -142,15 +136,11 @@ export function HealthCard() {
             </div>
 
             {/* Type Filter */}
-            <div style={{ position: 'relative' }}>
-              <Filter size={16} color="#94a3b8" style={{ position: 'absolute', left: 12, top: 11 }} />
+            <div className="relative">
               <select 
                 value={typeFilter}
                 onChange={e => setTypeFilter(e.target.value)}
-                style={{
-                  padding: '9px 12px 9px 36px', borderRadius: 8, border: '1px solid #cbd5e1',
-                  fontSize: 13, outline: 'none', background: 'white', cursor: 'pointer', fontFamily: 'inherit'
-                }}
+                className="ir-input"
               >
                 <option value="ALL">All Source Types</option>
                 {uniqueTypes.map((t: any) => (
@@ -160,73 +150,60 @@ export function HealthCard() {
             </div>
           </div>
         </div>
-      </div>
 
-      {/* Main Table Area */}
-      <div style={{ flex: 1, padding: '24px 28px', overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
-        <div style={{ 
-          background: 'white', borderRadius: 12, border: '1px solid #e2e8f0', 
-          boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.05)',
-          display: 'flex', flexDirection: 'column', flex: 1, overflow: 'hidden'
-        }}>
-          
-          <div style={{ overflowX: 'auto', flex: 1 }}>
-            <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
-              <thead style={{ position: 'sticky', top: 0, background: '#f8fafc', zIndex: 10 }}>
+        {/* Main Table Area */}
+        <div className="ir-card overflow-hidden">
+          <div style={{ overflowX: 'auto' }}>
+            <table className="ir-table">
+              <thead>
                 <tr>
                   {['Source ID', 'Station', 'Type', 'Disinfection', 'Status', 'Last Sample', 'Next Due', 'Actions'].map(h => (
-                    <th key={h} style={{
-                      padding: '14px 20px', fontSize: 11.5, fontWeight: 800, color: '#475569',
-                      textTransform: 'uppercase', letterSpacing: '0.05em', borderBottom: '1px solid #e2e8f0'
-                    }}>{h}</th>
+                    <th key={h}>{h}</th>
                   ))}
                 </tr>
               </thead>
               <tbody>
                 {loading ? (
                   <tr>
-                    <td colSpan={8} style={{ textAlign: 'center', padding: '60px' }}>
-                      <div style={{ display: 'inline-block', width: 32, height: 32, border: '3px solid #e2e8f0', borderTopColor: '#2563eb', borderRadius: '50%', animation: 'spin 1s linear infinite' }} />
+                    <td colSpan={8} className="text-center py-16" style={{ color: 'var(--text-muted)' }}>
+                      <div className="w-8 h-8 border-2 border-sky-500 border-t-transparent rounded-full animate-spin mx-auto" />
                     </td>
                   </tr>
                 ) : paginatedData.length === 0 ? (
                   <tr>
-                    <td colSpan={8} style={{ textAlign: 'center', padding: '60px', color: '#64748b' }}>
+                    <td colSpan={8} className="text-center py-16" style={{ color: 'var(--text-muted)' }}>
                       No water sources found matching your criteria.
                     </td>
                   </tr>
                 ) : (
-                  paginatedData.map((row, idx) => {
+                  paginatedData.map((row) => {
                     const cfg = STATUS_CONFIG[row.current_status] || DEFAULT_STATUS;
                     const StatusIcon = cfg.icon;
                     const isDue = (dateStr: string) => dateStr && new Date(dateStr) < new Date();
                     
                     return (
-                      <tr key={row.id} style={{ borderBottom: '1px solid #f1f5f9', background: idx % 2 === 0 ? 'white' : '#fafafa', transition: 'background 0.15s' }}
-                          onMouseEnter={e => (e.currentTarget.style.background = '#f0f9ff')}
-                          onMouseLeave={e => (e.currentTarget.style.background = idx % 2 === 0 ? 'white' : '#fafafa')}>
-                        
-                        <td style={{ padding: '14px 20px', fontWeight: 800, color: '#0f172a', fontSize: 13 }}>
+                      <tr key={row.id}>
+                        <td className="font-mono text-xs font-bold" style={{ color: '#0284c7' }}>
                           {row.source_id_code}
                         </td>
                         
-                        <td style={{ padding: '14px 20px' }}>
-                          <div style={{ fontSize: 13, fontWeight: 700, color: '#334155' }}>{row.station?.name || '—'}</div>
-                          <div style={{ fontSize: 11, color: '#64748b', marginTop: 2 }}>{row.station?.code} · {row.station?.division?.name}</div>
+                        <td>
+                          <div className="text-xs font-bold" style={{ color: 'var(--text-primary)' }}>{row.station?.name || '—'}</div>
+                          <div className="text-[11px]" style={{ color: 'var(--text-muted)' }}>{row.station?.code} · {row.station?.division?.name}</div>
                         </td>
                         
-                        <td style={{ padding: '14px 20px', fontSize: 13, color: '#475569', fontWeight: 500 }}>
+                        <td className="text-xs" style={{ color: 'var(--text-secondary)' }}>
                           {row.source_type || '—'}
                         </td>
                         
-                        <td style={{ padding: '14px 20px', fontSize: 13, color: '#475569', fontWeight: 500 }}>
+                        <td className="text-xs" style={{ color: 'var(--text-secondary)' }}>
                           {row.disinfection_method || '—'}
                         </td>
                         
-                        <td style={{ padding: '14px 20px' }}>
+                        <td>
                           <span style={{
                             display: 'inline-flex', alignItems: 'center', gap: 6,
-                            padding: '4px 10px', borderRadius: 20, fontSize: 11, fontWeight: 800,
+                            padding: '3px 8px', borderRadius: 20, fontSize: 11, fontWeight: 800,
                             background: cfg.bg, color: cfg.text, border: `1px solid ${cfg.border}`
                           }}>
                             <StatusIcon size={12} />
@@ -234,44 +211,43 @@ export function HealthCard() {
                           </span>
                         </td>
                         
-                        <td style={{ padding: '14px 20px', fontSize: 12.5, color: '#475569' }}>
-                          {row.last_bacteriological_sample_date ? new Date(row.last_bacteriological_sample_date).toLocaleDateString() : '—'}
+                        <td className="text-xs" style={{ color: 'var(--text-muted)' }}>
+                          {row.last_bacteriological_sample_date ? new Date(row.last_bacteriological_sample_date).toLocaleDateString('en-IN') : '—'}
                         </td>
                         
-                        <td style={{ padding: '14px 20px', fontSize: 12.5 }}>
+                        <td className="text-xs">
                           {row.next_bacteriological_sample_due ? (
                             <span style={{ 
-                              color: isDue(row.next_bacteriological_sample_due) ? '#dc2626' : '#475569', 
+                              color: isDue(row.next_bacteriological_sample_due) ? '#ef4444' : 'var(--text-muted)', 
                               fontWeight: isDue(row.next_bacteriological_sample_due) ? 700 : 500,
                               display: 'flex', alignItems: 'center', gap: 4
                             }}>
                               {isDue(row.next_bacteriological_sample_due) && <Clock size={12} />}
-                              {new Date(row.next_bacteriological_sample_due).toLocaleDateString()}
+                              {new Date(row.next_bacteriological_sample_due).toLocaleDateString('en-IN')}
                             </span>
                           ) : '—'}
                         </td>
                         
-                        <td style={{ padding: '14px 20px' }}>
+                        <td>
                           <div style={{ display: 'flex', gap: 8 }}>
                             <button 
                               onClick={() => setQrModalItem(row)}
-                              style={{ background: '#f1f5f9', border: 'none', padding: 6, borderRadius: 6, cursor: 'pointer', color: '#475569' }}
+                              className="ir-btn-secondary p-1.5 rounded-lg text-xs"
                               title="View QR"
                             >
                               <QrCode size={16} />
                             </button>
                             <Link 
                               to={`/lab/result-entry?source_id=${row.id}`} 
-                              style={{ background: '#eff6ff', border: 'none', padding: 6, borderRadius: 6, cursor: 'pointer', color: '#2563eb', textDecoration: 'none' }}
+                              className="ir-btn-secondary p-1.5 rounded-lg text-xs"
                               title="Enter Lab Result"
                             >
                               <FlaskConical size={16} />
                             </Link>
                           </div>
                         </td>
-                        
                       </tr>
-                    )
+                    );
                   })
                 )}
               </tbody>
