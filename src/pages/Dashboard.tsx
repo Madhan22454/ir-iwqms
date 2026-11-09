@@ -20,7 +20,7 @@ import {
 } from 'lucide-react';
 import { API_URL } from '../config/api';
 import { FALLBACK_STATIONS } from '../data/gisFallbackData';
-import { INDIA_SVG_STATES, INDIA_SVG_VIEWBOX, geoToSvgCoords } from '../data/indiaSvgData';
+import { INDIA_SVG_STATES, INDIA_SVG_VIEWBOX, geoToSvgCoords, IRI_ATLAS_STATE_COLORS } from '../data/indiaSvgData';
 import { INDIAN_RAILWAY_TRUNK_CORRIDORS } from '../data/indiaRailwayCorridors';
 
 const DEFAULT_SUMMARY: DashboardSummaryData = {
@@ -678,12 +678,13 @@ export function Dashboard() {
               width: '100%',
               height: 380,
               borderRadius: 10,
-              background: 'radial-gradient(ellipse at center, #0f172a 0%, #090e17 100%)',
-              border: '1px solid #1e293b',
+              background: 'radial-gradient(ellipse at center, #bce4f2 0%, #9ecfe0 60%, #85bdd2 100%)',
+              border: '1px solid #7dd3fc',
               overflow: 'hidden',
               display: 'flex',
               alignItems: 'center',
-              justifyContent: 'center'
+              justifyContent: 'center',
+              boxShadow: 'inset 0 2px 8px rgba(0,0,0,0.06)'
             }}
           >
             <svg
@@ -692,24 +693,17 @@ export function Dashboard() {
                 width: '100%',
                 height: '100%',
                 maxHeight: '370px',
-                filter: 'drop-shadow(0 6px 18px rgba(0,0,0,0.5))'
+                filter: 'drop-shadow(0 6px 18px rgba(0,0,0,0.18))'
               }}
             >
-              <defs>
-                <filter id="mini-glow" x="-20%" y="-20%" width="140%" height="140%">
-                  <feGaussianBlur stdDeviation="3" result="blur" />
-                  <feComposite in="SourceGraphic" in2="blur" operator="over" />
-                </filter>
-              </defs>
-
-              {/* 36 Authentic Survey of India States */}
+              {/* 36 Authentic Survey of India States in IndiaRailInfo Atlas Pastel Tones */}
               <g id="mini-india-states">
                 {INDIA_SVG_STATES.map((state) => (
                   <path
                     key={state.id}
                     d={state.d}
-                    fill="#1e293b"
-                    stroke="#334155"
+                    fill={IRI_ATLAS_STATE_COLORS[state.id] || '#fce5cd'}
+                    stroke="#5a4670"
                     strokeWidth="0.75"
                     strokeLinejoin="round"
                     style={{ transition: 'fill 0.2s ease' }}
@@ -719,7 +713,7 @@ export function Dashboard() {
                 ))}
               </g>
 
-              {/* Indian Railways Trunk Corridors */}
+              {/* Indian Railways Track Network (Matching IndiaRailInfo Gauge Colors) */}
               <g id="mini-railway-corridors">
                 {INDIAN_RAILWAY_TRUNK_CORRIDORS.map((corridor) => {
                   const points = corridor.coordinates.map(([lat, lng]) => {
@@ -729,27 +723,45 @@ export function Dashboard() {
 
                   return (
                     <g key={corridor.id}>
+                      {/* White casing for contrast over pastel states */}
                       <polyline
                         points={points}
                         fill="none"
-                        stroke="#2563eb"
-                        strokeWidth="1.6"
-                        strokeOpacity="0.7"
-                      />
-                      <polyline
-                        points={points}
-                        fill="none"
-                        stroke="#93c5fd"
-                        strokeWidth="0.8"
-                        strokeDasharray="3 3"
+                        stroke="#ffffff"
+                        strokeWidth="2.8"
                         strokeOpacity="0.85"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
                       />
+                      {/* Gauge Colored Railway Line */}
+                      <polyline
+                        points={points}
+                        fill="none"
+                        stroke={corridor.color}
+                        strokeWidth="1.6"
+                        strokeOpacity="0.95"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                      />
+                      {/* Electrified Double Line Spine */}
+                      {corridor.trackType === 'ELECTRIFIED_DOUBLE' && (
+                        <polyline
+                          points={points}
+                          fill="none"
+                          stroke="#ffffff"
+                          strokeWidth="0.7"
+                          strokeDasharray="2.5 3"
+                          strokeOpacity="0.95"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                        />
+                      )}
                     </g>
                   );
                 })}
               </g>
 
-              {/* Station Sampling Pins */}
+              {/* Station Sampling Pins (Authentic IndiaRailInfo Junction Nodes) */}
               <g id="mini-station-pins">
                 {stations.map((stn) => {
                   if (!stn.gps_lat || !stn.gps_long) return null;
@@ -758,7 +770,7 @@ export function Dashboard() {
                   
                   // Color coding
                   const isUrgent = stn.current_status === 'OVERDUE' || stn.current_status === 'CRITICAL_UNFIT';
-                  const pinColor = isUrgent ? '#ef4444' : (stn.current_status === 'ATTENTION' ? '#f59e0b' : '#10b981');
+                  const pinColor = isUrgent ? '#dc2626' : (stn.current_status === 'ATTENTION' ? '#d97706' : '#15803d');
 
                   return (
                     <g
@@ -770,67 +782,49 @@ export function Dashboard() {
                       onMouseLeave={() => setHoveredStation(null)}
                       onClick={() => navigate(`/stations/${stn.id}`)}
                     >
-                      {/* Pulse ring for urgent stations */}
+                      {/* Steady concentric halo ring for urgent stations (NO moving/drifting circles) */}
                       {isUrgent && (
                         <circle
-                          r="10"
+                          r="8"
                           fill="none"
                           stroke={pinColor}
-                          strokeWidth="1.5"
-                          opacity="0.6"
-                        >
-                          <animate
-                            attributeName="r"
-                            from="4"
-                            to="14"
-                            dur="1.8s"
-                            repeatCount="indefinite"
-                          />
-                          <animate
-                            attributeName="opacity"
-                            from="0.8"
-                            to="0"
-                            dur="1.8s"
-                            repeatCount="indefinite"
-                          />
-                        </circle>
+                          strokeWidth="1.2"
+                          strokeOpacity="0.7"
+                          strokeDasharray="2 2"
+                        />
                       )}
 
-                      {/* Station Core Marker */}
+                      {/* Junction Ring */}
                       <circle
-                        r={isHovered ? 7 : 4.5}
+                        r={isHovered ? 5.5 : 4}
+                        fill="#ffffff"
+                        stroke={pinColor}
+                        strokeWidth={isHovered ? 2.2 : 1.8}
+                      />
+
+                      {/* Inner Telemetry Dot */}
+                      <circle
+                        r={isHovered ? 2.6 : 1.8}
                         fill={pinColor}
-                        stroke="#ffffff"
-                        strokeWidth={isHovered ? 2 : 1.5}
-                        filter="url(#mini-glow)"
                       />
 
                       {/* Station Code Badge for major junctions */}
-                      {(isHovered || ['NDLS', 'CSMT', 'HWH', 'MAS', 'GHY', 'SBC', 'TVC'].includes(stn.code)) && (
-                        <g transform="translate(0, -9)">
-                          <rect
-                            x={-14}
-                            y={-10}
-                            width={28}
-                            height={12}
-                            rx={3}
-                            fill="#090e17"
-                            stroke="#475569"
-                            strokeWidth="0.8"
-                            opacity="0.9"
-                          />
-                          <text
-                            x={0}
-                            y={-1.5}
-                            textAnchor="middle"
-                            fill="#f8fafc"
-                            fontSize="7.5"
-                            fontWeight="800"
-                            fontFamily="monospace"
-                          >
-                            {stn.code}
-                          </text>
-                        </g>
+                      {(isHovered || ['NDLS', 'CSMT', 'HWH', 'MAS', 'GHY', 'SBC', 'TVC', 'ADI', 'NGP', 'LKO'].includes(stn.code)) && (
+                        <text
+                          x="0"
+                          y="-6"
+                          textAnchor="middle"
+                          fill="#0f172a"
+                          fontSize="6.8"
+                          fontWeight="800"
+                          fontFamily="system-ui, -apple-system, sans-serif"
+                          paintOrder="stroke"
+                          stroke="#ffffff"
+                          strokeWidth="2.5"
+                          strokeLinejoin="round"
+                        >
+                          {stn.code}
+                        </text>
                       )}
                     </g>
                   );
