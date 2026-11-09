@@ -5,8 +5,10 @@ import {
   Search, X, ChevronRight, AlertTriangle, 
   ShieldAlert, Droplets, Compass,
   RefreshCw, ArrowUpRight, AlertCircle, CheckCircle2, Clock,
-  Maximize2, Minimize2, Train, Plus, Minus, RotateCcw
+  Maximize2, Minimize2, Train, Plus, Minus, RotateCcw, Lock
 } from 'lucide-react';
+
+import { useTheme } from '../context/ThemeContext';
 
 import { API_URL as API } from '../config/api';
 import { 
@@ -87,6 +89,7 @@ function getStationDisplayName(fullName: string): string {
 export default function GISMap() {
   const navigate = useNavigate();
   const containerRef = useRef<HTMLDivElement>(null);
+  const { isDark } = useTheme();
 
   // Data state
   const [loading, setLoading] = useState(true);
@@ -107,24 +110,46 @@ export default function GISMap() {
   const [filterDivision, setFilterDivision] = useState<string>('ALL');
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [showCorridors, setShowCorridors] = useState(true);
-  const [mapTheme, setMapTheme] = useState<'iri' | 'dark'>('iri');
+  const [mapTheme, setMapTheme] = useState<'iri' | 'dark'>(() => isDark ? 'dark' : 'iri');
   const [copiedCoords, setCopiedCoords] = useState(false);
   const [markerSizeMode, setMarkerSizeMode] = useState<'adaptive' | 'compact' | 'minimal'>('adaptive');
 
-  // Pan and Zoom state
+  // Sync with global theme when global theme changes
+  useEffect(() => {
+    setMapTheme(isDark ? 'dark' : 'iri');
+  }, [isDark]);
+
+  // Pan and Zoom state with strict coordinate locking bounds
   const [zoom, setZoom] = useState(1);
   const [pan, setPan] = useState({ x: 0, y: 0 });
   const [isDragging, setIsDragging] = useState(false);
   const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
 
+  // STRICT MAP COORDINATE LOCKING HELPER:
+  // Dynamically clamps pan offsets so the map can NEVER be dragged or zoomed out of view
+  const clampPan = useCallback((targetX: number, targetY: number, currentZoom: number) => {
+    const container = containerRef.current;
+    const viewW = container?.clientWidth || 900;
+    const viewH = container?.clientHeight || 700;
+
+    // Rendered SVG dimensions at current zoom (SVG base is 612 x 696)
+    const mapW = 612 * currentZoom;
+    const mapH = 696 * currentZoom;
+
+    // Boundary cushion allowing comfortable inspection of edges (Ladakh, Arunachal, Kanniyakumari, Gujarat)
+    // while firmly ensuring map center never escapes viewport
+    const maxPanX = Math.max(80, (mapW / 2) + (viewW / 4) - 80);
+    const maxPanY = Math.max(80, (mapH / 2) + (viewH / 4) - 80);
+
+    return {
+      x: Math.max(-maxPanX, Math.min(maxPanX, targetX)),
+      y: Math.max(-maxPanY, Math.min(maxPanY, targetY))
+    };
+  }, []);
+
   // Zoom-adaptive scale factor for monitored station icons so they never obstruct neighboring stations when zooming in
   const highlightIconScale = useMemo(() => {
-    // zoom ranges from 0.7 to 4.0
-    // At zoom 1.0 -> 1.0 (pan-India prominence)
-    // At zoom 1.5 -> 0.78
-    // At zoom 2.0 -> 0.62
-    // At zoom 3.0 -> 0.48
-    // At zoom 4.0 -> 0.38
+    // zoom ranges from 0.85 to 4.0
     const baseInverse = Math.max(0.32, Math.min(1.0, 1 / Math.pow(zoom, 0.75)));
     const modeMultiplier = markerSizeMode === 'minimal' ? 0.62 : (markerSizeMode === 'compact' ? 0.78 : 1.0);
     return baseInverse * modeMultiplier;
@@ -155,22 +180,53 @@ export default function GISMap() {
     return () => document.removeEventListener('fullscreenchange', handleFullscreenChange);
   }, []);
 
-  // Zoom handlers
-  const handleZoomIn = () => setZoom(z => Math.min(z * 1.3, 4));
-  const handleZoomOut = () => setZoom(z => Math.max(z / 1.3, 0.7));
+  // Zoom handlers (Locked strictly between 0.85 and 4.0)
+  const handleZoomIn = () => {
+    setZoom(z => {
+      const nextZoom = Math.min(z * 1.25, 4.0);
+      setPan(p => clampPan(p.x, p.y, nextZoom));
+      return nextZoom;
+    });
+  };
+
+  const handleZoomOut = () => {
+    setZoom(z => {
+      const nextZoom = Math.max(z / 1.25, 0.85);
+      setPan(p => clampPan(p.x, p.y, nextZoom));
+      return nextZoom;
+    });
+  };
+
   const handleResetView = () => {
     setZoom(1);
     setPan({ x: 0, y: 0 });
   };
 
-  // Mouse wheel zoom
+  // Cursor-centered mouse wheel zoom with bounded pan locking
   const handleWheel = (e: React.WheelEvent) => {
     e.preventDefault();
+    const container = containerRef.current;
+    if (!container) return;
+
+    const rect = container.getBoundingClientRect();
+    const mouseX = e.clientX - rect.left - rect.width / 2;
+    const mouseY = e.clientY - rect.top - rect.height / 2;
+
     const factor = e.deltaY < 0 ? 1.15 : 0.87;
-    setZoom(z => Math.min(Math.max(z * factor, 0.7), 4));
+    const nextZoom = Math.min(Math.max(zoom * factor, 0.85), 4.0);
+
+    if (nextZoom === zoom) return;
+
+    // Zoom toward mouse focal point
+    const zoomRatio = nextZoom / zoom;
+    const targetPanX = mouseX - (mouseX - pan.x) * zoomRatio;
+    const targetPanY = mouseY - (mouseY - pan.y) * zoomRatio;
+
+    setZoom(nextZoom);
+    setPan(clampPan(targetPanX, targetPanY, nextZoom));
   };
 
-  // Mouse drag pan
+  // Mouse drag pan with strict boundary locking
   const handleMouseDown = (e: React.MouseEvent) => {
     if (e.button !== 0) return; // Only left click
     setIsDragging(true);
@@ -179,13 +235,28 @@ export default function GISMap() {
 
   const handleMouseMove = (e: React.MouseEvent) => {
     if (!isDragging) return;
-    setPan({
-      x: e.clientX - dragStart.x,
-      y: e.clientY - dragStart.y
-    });
+    const rawX = e.clientX - dragStart.x;
+    const rawY = e.clientY - dragStart.y;
+    setPan(clampPan(rawX, rawY, zoom));
   };
 
   const handleMouseUp = () => setIsDragging(false);
+
+  // Double click to toggle regional zoom or reset
+  const handleDoubleClick = (e: React.MouseEvent) => {
+    if (zoom > 1.3) {
+      handleResetView();
+    } else {
+      const container = containerRef.current;
+      if (!container) return;
+      const rect = container.getBoundingClientRect();
+      const mouseX = e.clientX - rect.left - rect.width / 2;
+      const mouseY = e.clientY - rect.top - rect.height / 2;
+      const nextZoom = 2.0;
+      setZoom(nextZoom);
+      setPan(clampPan(-mouseX * 0.6, -mouseY * 0.6, nextZoom));
+    }
+  };
 
   // Fetch or fallback data loading
   const loadData = useCallback(async () => {
@@ -616,6 +687,7 @@ export default function GISMap() {
         onMouseUp={handleMouseUp}
         onMouseLeave={handleMouseUp}
         onWheel={handleWheel}
+        onDoubleClick={handleDoubleClick}
       >
         {/* Subtle Background Pattern */}
         <div 
@@ -656,28 +728,31 @@ export default function GISMap() {
           )}
         </div>
 
-        {/* ZOOM & PAN CONTROLS (BOTTOM RIGHT) */}
+        {/* ZOOM & PAN CONTROLS (BOTTOM RIGHT) WITH COORDINATE LOCK */}
         <div className="absolute bottom-6 right-6 z-10 flex flex-col items-center gap-1.5 bg-slate-900/90 backdrop-blur-md border border-slate-700/80 p-1.5 rounded-xl shadow-2xl">
           <button 
             onClick={handleZoomIn} 
-            title="Zoom In"
+            title="Zoom In (Wheel scroll up also supported)"
             className="p-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 transition-colors"
           >
             <Plus className="w-4 h-4" />
           </button>
-          <div className="text-[10px] font-mono text-slate-400 py-0.5">
-            {Math.round(zoom * 100)}%
+          <div className="text-[10px] font-mono text-slate-400 py-0.5 flex flex-col items-center">
+            <span>{Math.round(zoom * 100)}%</span>
+            <span className="text-[8px] text-emerald-400 flex items-center gap-0.5" title="Pan and zoom bounds strictly locked">
+              <Lock className="w-2.5 h-2.5" />
+            </span>
           </div>
           <button 
             onClick={handleZoomOut} 
-            title="Zoom Out"
+            title="Zoom Out (Wheel scroll down also supported)"
             className="p-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 transition-colors"
           >
             <Minus className="w-4 h-4" />
           </button>
           <button 
             onClick={handleResetView} 
-            title="Reset Pan & Zoom"
+            title="Recenter & Fit Pan-India Map (Or double-click map)"
             className="p-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-blue-400 transition-colors border-t border-slate-700/80 mt-1"
           >
             <RotateCcw className="w-3.5 h-3.5" />

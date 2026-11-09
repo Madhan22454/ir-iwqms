@@ -21,9 +21,12 @@ import {
   ChevronRight,
   ChevronLeft,
   Menu,
-  Bell
+  Bell,
+  Sun,
+  Moon
 } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
+import { useTheme } from "../context/ThemeContext";
 import { API_URL } from "../config/api";
 
 type NavItem = {
@@ -86,6 +89,7 @@ const ROLE_LABELS: Record<string, string> = {
 
 export function Layout() {
   const { user, logout } = useAuth();
+  const { isDark, toggleTheme } = useTheme();
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -124,7 +128,7 @@ export function Layout() {
   const sidebarWidth = isCollapsed ? 76 : 270;
 
   return (
-    <div style={{ display: "flex", height: "100vh", background: "#f8fafc", overflow: "hidden" }}>
+    <div style={{ display: "flex", height: "100vh", background: "var(--bg-page)", overflow: "hidden" }}>
       
       {/* Mobile Drawer Backdrop */}
       {isMobileMenuOpen && (
@@ -404,14 +408,15 @@ export function Layout() {
         <header
           style={{
             height: 64,
-            background: "#ffffff",
-            borderBottom: "1px solid #e2e8f0",
+            background: "var(--bg-header)",
+            borderBottom: "1px solid var(--border-color)",
             display: "flex",
             alignItems: "center",
             padding: "0 24px",
-            boxShadow: "0 1px 3px rgba(0,0,0,0.03)",
+            boxShadow: "0 1px 3px rgba(0,0,0,0.06)",
             flexShrink: 0,
             justifyContent: "space-between",
+            transition: "background 0.2s ease, border-color 0.2s ease"
           }}
         >
           <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
@@ -422,7 +427,7 @@ export function Layout() {
               style={{
                 background: "transparent",
                 border: "none",
-                color: "#1e3a8a",
+                color: "#3b82f6",
                 cursor: "pointer",
                 padding: 4,
               }}
@@ -448,7 +453,7 @@ export function Layout() {
                 style={{
                   fontSize: 15.5,
                   fontWeight: 800,
-                  color: "#0f172a",
+                  color: "var(--text-primary)",
                   margin: 0,
                   letterSpacing: "-0.2px",
                 }}
@@ -459,7 +464,30 @@ export function Layout() {
             </div>
           </div>
 
-          <div style={{ display: "flex", alignItems: "center", gap: 18 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
+            {/* Dark Mode / Light Mode Theme Toggle Button */}
+            <button
+              onClick={toggleTheme}
+              title={isDark ? "Switch to Light Mode" : "Switch to Dark Command Mode"}
+              style={{
+                background: isDark ? "rgba(255,255,255,0.08)" : "rgba(15,23,42,0.05)",
+                border: `1px solid ${isDark ? "rgba(255,255,255,0.14)" : "rgba(0,0,0,0.1)"}`,
+                borderRadius: 8,
+                padding: "6px 11px",
+                cursor: "pointer",
+                display: "flex",
+                alignItems: "center",
+                gap: 6,
+                color: isDark ? "#fbbf24" : "#475569",
+                fontSize: 12,
+                fontWeight: 700,
+                transition: "all 0.15s ease",
+              }}
+            >
+              {isDark ? <Sun size={15} className="text-amber-400" /> : <Moon size={15} className="text-slate-600" />}
+              <span className="hidden sm:inline" style={{ color: "var(--text-primary)" }}>{isDark ? "Dark Ops" : "Light"}</span>
+            </button>
+
             {/* User Role Badge */}
             {user && (
               <span
@@ -468,9 +496,9 @@ export function Layout() {
                   fontWeight: 700,
                   padding: "4px 10px",
                   borderRadius: 6,
-                  background: "#eff6ff",
-                  color: "#1d4ed8",
-                  border: "1px solid #bfdbfe",
+                  background: isDark ? "rgba(30, 58, 138, 0.4)" : "#eff6ff",
+                  color: isDark ? "#93c5fd" : "#1d4ed8",
+                  border: isDark ? "1px solid rgba(59, 130, 246, 0.3)" : "1px solid #bfdbfe",
                 }}
                 className="hidden sm:inline-block"
               >
@@ -483,17 +511,18 @@ export function Layout() {
               onClick={() => navigate("/alerts")}
               title="Active Alert Incidents"
               style={{
-                background: "transparent",
-                border: "none",
+                background: isDark ? "rgba(255,255,255,0.06)" : "transparent",
+                border: isDark ? "1px solid rgba(255,255,255,0.1)" : "none",
+                borderRadius: 8,
                 position: "relative",
                 cursor: "pointer",
-                padding: 6,
+                padding: 7,
                 display: "flex",
                 alignItems: "center",
-                color: "#475569",
+                color: isDark ? "#cbd5e1" : "#475569",
               }}
             >
-              <Bell size={19} />
+              <Bell size={18} />
               {notificationCount > 0 && (
                 <span
                   style={{
@@ -510,7 +539,7 @@ export function Layout() {
                     display: "flex",
                     alignItems: "center",
                     justifyContent: "center",
-                    border: "2px solid #ffffff",
+                    border: "2px solid var(--bg-header)",
                   }}
                 >
                   {notificationCount > 99 ? "99+" : notificationCount}
@@ -518,7 +547,7 @@ export function Layout() {
               )}
             </button>
 
-            <div style={{ width: 1, height: 22, background: "#e2e8f0" }} />
+            <div style={{ width: 1, height: 22, background: "var(--border-color)" }} />
 
             {/* Live Feed Status Indicator */}
             <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
@@ -532,7 +561,7 @@ export function Layout() {
                   animation: "pulse 2s ease-in-out infinite",
                 }}
               />
-              <span style={{ fontSize: 12, color: "#334155", fontWeight: 700 }}>Live Feed</span>
+              <span style={{ fontSize: 12, color: "var(--text-secondary)", fontWeight: 700 }}>Live Feed</span>
             </div>
           </div>
         </header>
@@ -549,11 +578,11 @@ export function Layout() {
                 padding: "12px 16px",
                 textAlign: "center",
                 fontSize: "12px",
-                color: "#64748b",
+                color: "var(--text-muted)",
                 fontWeight: 600,
-                borderTop: "1px solid #e2e8f0",
+                borderTop: "1px solid var(--border-color)",
                 marginTop: "auto",
-                backgroundColor: "#f8fafc",
+                backgroundColor: "var(--bg-header)",
                 letterSpacing: "0.02em",
                 flexShrink: 0,
               }}

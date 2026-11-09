@@ -257,22 +257,11 @@ export default function Analytics() {
   }, [sources]);
 
   return (
-    <div style={{ height: '100%', overflowY: 'auto', background: '#f8fafc', padding: '24px 28px' }}>
-      <div style={{ maxWidth: 1400, margin: '0 auto', display: 'flex', flexDirection: 'column', gap: 20 }}>
+    <div className="ir-page">
+      <div className="ir-container space-y-6">
         
         {/* Header */}
-        <div style={{
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-          flexWrap: 'wrap',
-          gap: 16,
-          background: '#ffffff',
-          padding: '20px 24px',
-          borderRadius: 12,
-          border: '1px solid #e2e8f0',
-          boxShadow: '0 1px 3px rgba(0,0,0,0.04)'
-        }}>
+        <div className="ir-header-card flex items-center justify-between flex-wrap gap-4">
           <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
             <div style={{
               background: 'linear-gradient(135deg, #1e3a8a, #0369a1)',
@@ -313,14 +302,8 @@ export default function Analytics() {
             <select
               value={selectedZone}
               onChange={e => setSelectedZone(e.target.value)}
-              style={{
-                padding: '8px 12px',
-                border: '1px solid #cbd5e1',
-                borderRadius: 8,
-                fontSize: 13,
-                background: '#f8fafc',
-                color: '#0f172a'
-              }}
+              className="ir-input"
+              style={{ fontSize: 13, padding: '7px 12px' }}
             >
               <option value="ALL">All Zones ({zones.length})</option>
               {zones.map(z => (
@@ -331,28 +314,16 @@ export default function Analytics() {
             <button
               onClick={fetchData}
               disabled={loading}
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: 6,
-                padding: '9px 14px',
-                background: '#ffffff',
-                border: '1px solid #cbd5e1',
-                borderRadius: 8,
-                fontSize: 13,
-                fontWeight: 600,
-                color: '#334155',
-                cursor: loading ? 'not-allowed' : 'pointer'
-              }}
+              className="ir-btn-secondary flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-bold"
             >
-              <RefreshCw size={15} className={loading ? 'animate-spin' : ''} />
+              <RefreshCw size={14} className={loading ? 'animate-spin' : ''} />
               Refresh
             </button>
           </div>
         </div>
 
         {error && (
-          <div style={{ background: '#fef2f2', border: '1px solid #fecaca', borderRadius: 8, padding: '12px 16px', color: '#991b1b', fontSize: 13, display: 'flex', alignItems: 'center', gap: 8 }}>
+          <div style={{ background: 'rgba(239, 68, 68, 0.15)', border: '1px solid rgba(239, 68, 68, 0.3)', borderRadius: 8, padding: '12px 16px', color: '#ef4444', fontSize: 13, display: 'flex', alignItems: 'center', gap: 8 }}>
             <AlertCircle size={16} />
             {error}
           </div>
@@ -362,13 +333,13 @@ export default function Analytics() {
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(480px, 1fr))', gap: 20 }}>
           
           {/* Chart 1: Zone-wise compliance */}
-          <div style={{ background: '#ffffff', borderRadius: 12, border: '1px solid #e2e8f0', padding: 22, boxShadow: '0 1px 3px rgba(0,0,0,0.02)' }}>
+          <div className="ir-card" style={{ padding: 22 }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
               <div>
-                <h3 style={{ fontSize: 15, fontWeight: 800, color: '#0f172a', margin: 0 }}>
+                <h3 style={{ fontSize: 15, fontWeight: 800, color: 'var(--text-primary)', margin: 0 }}>
                   Zone-wise Compliance Breakdown
                 </h3>
-                <p style={{ fontSize: 12, color: '#64748b', margin: '2px 0 0 0' }}>
+                <p style={{ fontSize: 12, color: 'var(--text-muted)', margin: '2px 0 0 0' }}>
                   Compliant vs Non-compliant water supply installations
                 </p>
               </div>
@@ -377,10 +348,10 @@ export default function Analytics() {
             <div style={{ width: '100%', height: 280 }}>
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={zoneComplianceData} margin={{ top: 10, right: 10, left: -20, bottom: 20 }}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
-                  <XAxis dataKey="zone" tick={{ fontSize: 11, fill: '#64748b' }} />
-                  <YAxis tick={{ fontSize: 11, fill: '#64748b' }} />
-                  <Tooltip contentStyle={{ borderRadius: 8, border: '1px solid #e2e8f0', fontSize: 12 }} />
+                  <CartesianGrid strokeDasharray="3 3" stroke="#334155" opacity={0.3} vertical={false} />
+                  <XAxis dataKey="zone" tick={{ fontSize: 11, fill: 'var(--text-muted)' }} />
+                  <YAxis tick={{ fontSize: 11, fill: 'var(--text-muted)' }} />
+                  <Tooltip contentStyle={{ borderRadius: 8, background: 'var(--bg-card)', border: '1px solid var(--border-color)', color: 'var(--text-primary)', fontSize: 12 }} />
                   <Legend wrapperStyle={{ fontSize: 12 }} />
                   <Bar dataKey="Compliant" stackId="a" fill="#16a34a" radius={[0, 0, 0, 0]} />
                   <Bar dataKey="Non-Compliant" stackId="a" fill="#dc2626" radius={[4, 4, 0, 0]} />
@@ -390,13 +361,13 @@ export default function Analytics() {
           </div>
 
           {/* Chart 2: FIT / UNFIT distribution */}
-          <div style={{ background: '#ffffff', borderRadius: 12, border: '1px solid #e2e8f0', padding: 22, boxShadow: '0 1px 3px rgba(0,0,0,0.02)' }}>
+          <div className="ir-card" style={{ padding: 22 }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
               <div>
-                <h3 style={{ fontSize: 15, fontWeight: 800, color: '#0f172a', margin: 0 }}>
+                <h3 style={{ fontSize: 15, fontWeight: 800, color: 'var(--text-primary)', margin: 0 }}>
                   Water Potability Test Results
                 </h3>
-                <p style={{ fontSize: 12, color: '#64748b', margin: '2px 0 0 0' }}>
+                <p style={{ fontSize: 12, color: 'var(--text-muted)', margin: '2px 0 0 0' }}>
                   Distribution of FIT / UNFIT potability verdicts
                 </p>
               </div>
@@ -419,7 +390,7 @@ export default function Analytics() {
                       <Cell key={`cell-${index}`} fill={entry.color} />
                     ))}
                   </Pie>
-                  <Tooltip contentStyle={{ borderRadius: 8, border: '1px solid #e2e8f0', fontSize: 12 }} />
+                  <Tooltip contentStyle={{ borderRadius: 8, background: 'var(--bg-card)', border: '1px solid var(--border-color)', color: 'var(--text-primary)', fontSize: 12 }} />
                   <Legend wrapperStyle={{ fontSize: 12 }} />
                 </PieChart>
               </ResponsiveContainer>
@@ -432,13 +403,13 @@ export default function Analytics() {
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(480px, 1fr))', gap: 20 }}>
           
           {/* Chart 3: Monthly Sample Trend */}
-          <div style={{ background: '#ffffff', borderRadius: 12, border: '1px solid #e2e8f0', padding: 22, boxShadow: '0 1px 3px rgba(0,0,0,0.02)' }}>
+          <div className="ir-card" style={{ padding: 22 }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
               <div>
-                <h3 style={{ fontSize: 15, fontWeight: 800, color: '#0f172a', margin: 0 }}>
+                <h3 style={{ fontSize: 15, fontWeight: 800, color: 'var(--text-primary)', margin: 0 }}>
                   Monthly Surveillance Sampling Trend
                 </h3>
-                <p style={{ fontSize: 12, color: '#64748b', margin: '2px 0 0 0' }}>
+                <p style={{ fontSize: 12, color: 'var(--text-muted)', margin: '2px 0 0 0' }}>
                   Laboratory report submissions and detected unfit counts over time
                 </p>
               </div>
@@ -447,10 +418,10 @@ export default function Analytics() {
             <div style={{ width: '100%', height: 280 }}>
               <ResponsiveContainer width="100%" height="100%">
                 <LineChart data={monthlyTrendData} margin={{ top: 10, right: 10, left: -20, bottom: 20 }}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
-                  <XAxis dataKey="month" tick={{ fontSize: 11, fill: '#64748b' }} />
-                  <YAxis tick={{ fontSize: 11, fill: '#64748b' }} />
-                  <Tooltip contentStyle={{ borderRadius: 8, border: '1px solid #e2e8f0', fontSize: 12 }} />
+                  <CartesianGrid strokeDasharray="3 3" stroke="#334155" opacity={0.3} vertical={false} />
+                  <XAxis dataKey="month" tick={{ fontSize: 11, fill: 'var(--text-muted)' }} />
+                  <YAxis tick={{ fontSize: 11, fill: 'var(--text-muted)' }} />
+                  <Tooltip contentStyle={{ borderRadius: 8, background: 'var(--bg-card)', border: '1px solid var(--border-color)', color: 'var(--text-primary)', fontSize: 12 }} />
                   <Legend wrapperStyle={{ fontSize: 12 }} />
                   <Line type="monotone" dataKey="samples" stroke="#2563eb" strokeWidth={2.5} name="Total Reports Evaluated" />
                   <Line type="monotone" dataKey="unfit" stroke="#dc2626" strokeWidth={2} strokeDasharray="3 3" name="Unfit Results" />
@@ -460,13 +431,13 @@ export default function Analytics() {
           </div>
 
           {/* Chart 4: Residual Chlorine Distribution */}
-          <div style={{ background: '#ffffff', borderRadius: 12, border: '1px solid #e2e8f0', padding: 22, boxShadow: '0 1px 3px rgba(0,0,0,0.02)' }}>
+          <div className="ir-card" style={{ padding: 22 }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
               <div>
-                <h3 style={{ fontSize: 15, fontWeight: 800, color: '#0f172a', margin: 0 }}>
+                <h3 style={{ fontSize: 15, fontWeight: 800, color: 'var(--text-primary)', margin: 0 }}>
                   Residual Chlorine Level Distribution (ppm)
                 </h3>
-                <p style={{ fontSize: 12, color: '#64748b', margin: '2px 0 0 0' }}>
+                <p style={{ fontSize: 12, color: 'var(--text-muted)', margin: '2px 0 0 0' }}>
                   Concentration brackets across active railway drinking water taps
                 </p>
               </div>
@@ -475,10 +446,10 @@ export default function Analytics() {
             <div style={{ width: '100%', height: 280 }}>
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={chlorineDistributionData} margin={{ top: 10, right: 10, left: -20, bottom: 40 }}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
-                  <XAxis dataKey="range" tick={{ fontSize: 10, fill: '#64748b' }} interval={0} angle={-25} textAnchor="end" />
-                  <YAxis tick={{ fontSize: 11, fill: '#64748b' }} />
-                  <Tooltip contentStyle={{ borderRadius: 8, border: '1px solid #e2e8f0', fontSize: 12 }} />
+                  <CartesianGrid strokeDasharray="3 3" stroke="#334155" opacity={0.3} vertical={false} />
+                  <XAxis dataKey="range" tick={{ fontSize: 10, fill: 'var(--text-muted)' }} interval={0} angle={-25} textAnchor="end" />
+                  <YAxis tick={{ fontSize: 11, fill: 'var(--text-muted)' }} />
+                  <Tooltip contentStyle={{ borderRadius: 8, background: 'var(--bg-card)', border: '1px solid var(--border-color)', color: 'var(--text-primary)', fontSize: 12 }} />
                   <Bar dataKey="count" name="Water Sources Count" radius={[4, 4, 0, 0]}>
                     {chlorineDistributionData.map((entry, index) => (
                       <Cell key={`cell-${index}`} fill={entry.color} />
@@ -492,13 +463,13 @@ export default function Analytics() {
         </div>
 
         {/* Division Compliance Table Bar Chart */}
-        <div style={{ background: '#ffffff', borderRadius: 12, border: '1px solid #e2e8f0', padding: 22, boxShadow: '0 1px 3px rgba(0,0,0,0.02)' }}>
+        <div className="ir-card" style={{ padding: 22 }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
             <div>
-              <h3 style={{ fontSize: 15, fontWeight: 800, color: '#0f172a', margin: 0 }}>
+              <h3 style={{ fontSize: 15, fontWeight: 800, color: 'var(--text-primary)', margin: 0 }}>
                 Division-wise Water Potability Compliance
               </h3>
-              <p style={{ fontSize: 12, color: '#64748b', margin: '2px 0 0 0' }}>
+              <p style={{ fontSize: 12, color: 'var(--text-muted)', margin: '2px 0 0 0' }}>
                 Operational divisions comparison under current selection
               </p>
             </div>
@@ -507,10 +478,10 @@ export default function Analytics() {
           <div style={{ width: '100%', height: 260 }}>
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={divisionComplianceData} margin={{ top: 10, right: 10, left: -20, bottom: 20 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
-                <XAxis dataKey="division" tick={{ fontSize: 11, fill: '#64748b' }} />
-                <YAxis tick={{ fontSize: 11, fill: '#64748b' }} />
-                <Tooltip contentStyle={{ borderRadius: 8, border: '1px solid #e2e8f0', fontSize: 12 }} />
+                <CartesianGrid strokeDasharray="3 3" stroke="#334155" opacity={0.3} vertical={false} />
+                <XAxis dataKey="division" tick={{ fontSize: 11, fill: 'var(--text-muted)' }} />
+                <YAxis tick={{ fontSize: 11, fill: 'var(--text-muted)' }} />
+                <Tooltip contentStyle={{ borderRadius: 8, background: 'var(--bg-card)', border: '1px solid var(--border-color)', color: 'var(--text-primary)', fontSize: 12 }} />
                 <Legend wrapperStyle={{ fontSize: 12 }} />
                 <Bar dataKey="Compliant" fill="#16a34a" radius={[2, 2, 0, 0]} />
                 <Bar dataKey="Non-Compliant" fill="#dc2626" radius={[2, 2, 0, 0]} />

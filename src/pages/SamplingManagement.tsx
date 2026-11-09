@@ -278,22 +278,11 @@ export default function SamplingManagement() {
   };
 
   return (
-    <div style={{ height: '100%', overflowY: 'auto', background: '#f8fafc', padding: '24px 28px' }}>
-      <div style={{ maxWidth: 1400, margin: '0 auto', display: 'flex', flexDirection: 'column', gap: 20 }}>
+    <div className="ir-page">
+      <div className="ir-container">
         
         {/* Header */}
-        <div style={{
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-          flexWrap: 'wrap',
-          gap: 16,
-          background: '#ffffff',
-          padding: '20px 24px',
-          borderRadius: 12,
-          border: '1px solid #e2e8f0',
-          boxShadow: '0 1px 3px rgba(0,0,0,0.04)'
-        }}>
+        <div className="ir-header-card">
           <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
             <div style={{
               background: 'linear-gradient(135deg, #1e3a8a, #3b82f6)',
@@ -302,13 +291,13 @@ export default function SamplingManagement() {
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              boxShadow: '0 4px 10px rgba(30,58,138,0.2)'
+              boxShadow: '0 4px 10px rgba(30,58,138,0.25)'
             }}>
               <CalendarCheck size={24} color="#ffffff" />
             </div>
             <div>
               <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                <h1 style={{ fontSize: 22, fontWeight: 800, color: '#0f172a', margin: 0 }}>
+                <h1 style={{ fontSize: 22, fontWeight: 800, color: 'var(--text-primary)', margin: 0 }}>
                   Water Sampling Management
                 </h1>
                 <span style={{
@@ -316,14 +305,14 @@ export default function SamplingManagement() {
                   fontWeight: 700,
                   padding: '2px 8px',
                   borderRadius: 12,
-                  background: counts.overdue > 0 ? '#fef2f2' : '#f0fdf4',
-                  color: counts.overdue > 0 ? '#dc2626' : '#16a34a',
-                  border: `1px solid ${counts.overdue > 0 ? '#fecaca' : '#bbf7d0'}`
+                  background: counts.overdue > 0 ? 'rgba(239, 68, 68, 0.15)' : 'rgba(22, 163, 74, 0.15)',
+                  color: counts.overdue > 0 ? '#ef4444' : '#16a34a',
+                  border: `1px solid ${counts.overdue > 0 ? '#ef4444' : '#16a34a'}`
                 }}>
                   {counts.overdue} Overdue
                 </span>
               </div>
-              <p style={{ fontSize: 13, color: '#64748b', margin: '4px 0 0 0' }}>
+              <p style={{ fontSize: 13, color: 'var(--text-muted)', margin: '4px 0 0 0' }}>
                 Operational surveillance schedules, collection logs, and field sampling dispatch for railway stations
               </p>
             </div>
@@ -332,20 +321,7 @@ export default function SamplingManagement() {
           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
             <button
               onClick={() => openSampleModal()}
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: 6,
-                padding: '9px 16px',
-                background: '#1e3a8a',
-                color: '#ffffff',
-                border: 'none',
-                borderRadius: 8,
-                fontSize: 13,
-                fontWeight: 700,
-                cursor: 'pointer',
-                boxShadow: '0 2px 6px rgba(30,58,138,0.25)'
-              }}
+              className="ir-btn-primary"
             >
               <Plus size={16} />
               Record Sample Collection
@@ -354,19 +330,7 @@ export default function SamplingManagement() {
             <button
               onClick={fetchData}
               disabled={loading}
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: 6,
-                padding: '9px 14px',
-                background: '#ffffff',
-                border: '1px solid #cbd5e1',
-                borderRadius: 8,
-                fontSize: 13,
-                fontWeight: 600,
-                color: '#334155',
-                cursor: loading ? 'not-allowed' : 'pointer'
-              }}
+              className="ir-btn-secondary"
             >
               <RefreshCw size={15} className={loading ? 'animate-spin' : ''} />
               Refresh
@@ -387,68 +351,47 @@ export default function SamplingManagement() {
           gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))',
           gap: 16
         }}>
-          <div style={{
-            background: '#ffffff',
-            borderRadius: 12,
-            border: '1px solid #e2e8f0',
-            padding: '16px 20px',
-            display: 'flex',
-            alignItems: 'center',
-            gap: 14,
-            boxShadow: '0 1px 3px rgba(0,0,0,0.02)'
-          }}>
-            <div style={{ background: '#eff6ff', padding: 10, borderRadius: 10, border: '1px solid #bfdbfe' }}>
-              <FlaskConical size={20} color="#1d4ed8" />
+          <div className="ir-stat-card" style={{ gap: 14, justifyContent: 'flex-start' }}>
+            <div style={{ background: 'rgba(59, 130, 246, 0.15)', padding: 10, borderRadius: 10, border: '1px solid rgba(59, 130, 246, 0.3)' }}>
+              <FlaskConical size={20} color="#3b82f6" />
             </div>
             <div>
-              <div style={{ fontSize: 13.5, fontWeight: 700, color: '#0f172a' }}>
+              <div style={{ fontSize: 13.5, fontWeight: 700, color: 'var(--text-primary)' }}>
                 Bacteriological Testing Frequency
               </div>
-              <div style={{ fontSize: 12, color: '#64748b', marginTop: 2 }}>
-                Mandated every <strong>30 calendar days</strong> per IS 10500 standards for all drinking water points
+              <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 2 }}>
+                Mandated every <strong style={{ color: 'var(--text-primary)' }}>30 calendar days</strong> per IS 10500 standards for all drinking water points
               </div>
             </div>
           </div>
 
-          <div style={{
-            background: '#ffffff',
-            borderRadius: 12,
-            border: '1px solid #e2e8f0',
-            padding: '16px 20px',
-            display: 'flex',
-            alignItems: 'center',
-            gap: 14,
-            boxShadow: '0 1px 3px rgba(0,0,0,0.02)'
-          }}>
-            <div style={{ background: '#fdf4ff', padding: 10, borderRadius: 10, border: '1px solid #f0abfc' }}>
-              <Droplets size={20} color="#a21caf" />
+          <div className="ir-stat-card" style={{ gap: 14, justifyContent: 'flex-start' }}>
+            <div style={{ background: 'rgba(168, 85, 247, 0.15)', padding: 10, borderRadius: 10, border: '1px solid rgba(168, 85, 247, 0.3)' }}>
+              <Droplets size={20} color="#c084fc" />
             </div>
             <div>
-              <div style={{ fontSize: 13.5, fontWeight: 700, color: '#0f172a' }}>
+              <div style={{ fontSize: 13.5, fontWeight: 700, color: 'var(--text-primary)' }}>
                 Chemical & Physical Testing Frequency
               </div>
-              <div style={{ fontSize: 12, color: '#64748b', marginTop: 2 }}>
-                Mandated every <strong>180 calendar days</strong> (semi-annually) across all division borewells
+              <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 2 }}>
+                Mandated every <strong style={{ color: 'var(--text-primary)' }}>180 calendar days</strong> (semi-annually) across all division borewells
               </div>
             </div>
           </div>
         </div>
 
         {/* Tab Switcher */}
-        <div style={{
+        <div className="ir-card" style={{
           display: 'flex',
-          borderBottom: '1px solid #e2e8f0',
-          background: '#ffffff',
-          borderRadius: 10,
-          padding: 4,
-          boxShadow: '0 1px 3px rgba(0,0,0,0.02)',
-          gap: 6
+          padding: 6,
+          gap: 6,
+          overflowX: 'auto'
         }}>
           {[
-            { key: 'due', label: 'Due for Collection', count: counts.due, color: '#d97706', bg: '#fffbeb' },
-            { key: 'overdue', label: 'Overdue Samples', count: counts.overdue, color: '#dc2626', bg: '#fef2f2' },
-            { key: 'upcoming', label: 'Upcoming Schedule', count: counts.upcoming, color: '#2563eb', bg: '#eff6ff' },
-            { key: 'history', label: 'Collected Samples Log', count: counts.history, color: '#475569', bg: '#f1f5f9' },
+            { key: 'due', label: 'Due for Collection', count: counts.due, color: '#d97706', bg: 'rgba(217, 119, 6, 0.15)' },
+            { key: 'overdue', label: 'Overdue Samples', count: counts.overdue, color: '#dc2626', bg: 'rgba(220, 38, 38, 0.15)' },
+            { key: 'upcoming', label: 'Upcoming Schedule', count: counts.upcoming, color: '#2563eb', bg: 'rgba(37, 99, 235, 0.15)' },
+            { key: 'history', label: 'Collected Samples Log', count: counts.history, color: 'var(--text-muted)', bg: 'var(--badge-neutral-bg)' },
           ].map(tab => {
             const isActive = activeTab === tab.key;
             return (
@@ -462,8 +405,8 @@ export default function SamplingManagement() {
                   padding: '9px 16px',
                   borderRadius: 8,
                   border: 'none',
-                  background: isActive ? '#1e3a8a' : 'transparent',
-                  color: isActive ? '#ffffff' : '#475569',
+                  background: isActive ? 'linear-gradient(135deg, #1e40af, #2563eb)' : 'transparent',
+                  color: isActive ? '#ffffff' : 'var(--text-secondary)',
                   fontSize: 13,
                   fontWeight: isActive ? 700 : 500,
                   cursor: 'pointer',
@@ -487,39 +430,28 @@ export default function SamplingManagement() {
         </div>
 
         {/* Filters */}
-        <div style={{
-          background: '#ffffff',
+        <div className="ir-card" style={{
           padding: '14px 18px',
-          borderRadius: 12,
-          border: '1px solid #e2e8f0',
           display: 'grid',
           gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
           gap: 12
         }}>
           <div style={{ position: 'relative' }}>
-            <Search size={16} color="#94a3b8" style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)' }} />
+            <Search size={16} color="var(--text-muted)" style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)' }} />
             <input
               type="text"
               placeholder="Search source or station..."
               value={searchTerm}
               onChange={e => setSearchTerm(e.target.value)}
-              style={{
-                width: '100%',
-                padding: '8px 12px 8px 36px',
-                border: '1px solid #cbd5e1',
-                borderRadius: 8,
-                fontSize: 13,
-                outline: 'none',
-                background: '#f8fafc',
-                color: '#0f172a'
-              }}
+              className="ir-input"
+              style={{ width: '100%', paddingLeft: 36 }}
             />
           </div>
 
           <select
             value={selectedStation}
             onChange={e => setSelectedStation(e.target.value)}
-            style={{ padding: '8px 12px', border: '1px solid #cbd5e1', borderRadius: 8, fontSize: 13, background: '#f8fafc' }}
+            className="ir-input"
           >
             <option value="ALL">All Stations ({stations.length})</option>
             {stations.map(s => (
@@ -530,7 +462,7 @@ export default function SamplingManagement() {
           <select
             value={selectedType}
             onChange={e => setSelectedType(e.target.value)}
-            style={{ padding: '8px 12px', border: '1px solid #cbd5e1', borderRadius: 8, fontSize: 13, background: '#f8fafc' }}
+            className="ir-input"
           >
             <option value="ALL">All Source Types</option>
             <option value="BOREWELL">BOREWELL</option>
@@ -544,38 +476,38 @@ export default function SamplingManagement() {
         {/* Content Table */}
         {activeTab === 'history' ? (
           /* Collected Samples History View */
-          <div style={{ background: '#ffffff', borderRadius: 12, border: '1px solid #e2e8f0', overflow: 'hidden' }}>
+          <div className="ir-card overflow-hidden">
             <div style={{ overflowX: 'auto' }}>
-              <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: 13 }}>
+              <table className="ir-table">
                 <thead>
-                  <tr style={{ background: '#f8fafc', borderBottom: '1px solid #e2e8f0' }}>
-                    <th style={{ padding: '12px 16px', fontWeight: 700, color: '#475569' }}>Sample ID</th>
-                    <th style={{ padding: '12px 16px', fontWeight: 700, color: '#475569' }}>Type</th>
-                    <th style={{ padding: '12px 16px', fontWeight: 700, color: '#475569' }}>Collection Date</th>
-                    <th style={{ padding: '12px 16px', fontWeight: 700, color: '#475569' }}>Sampling Location</th>
-                    <th style={{ padding: '12px 16px', fontWeight: 700, color: '#475569' }}>Collector</th>
-                    <th style={{ padding: '12px 16px', fontWeight: 700, color: '#475569' }}>Status</th>
+                  <tr>
+                    <th>Sample ID</th>
+                    <th>Type</th>
+                    <th>Collection Date</th>
+                    <th>Sampling Location</th>
+                    <th>Collector</th>
+                    <th>Status</th>
                   </tr>
                 </thead>
                 <tbody>
                   {samples.length === 0 ? (
                     <tr>
-                      <td colSpan={6} style={{ padding: 40, textAlign: 'center', color: '#64748b' }}>No samples logged yet.</td>
+                      <td colSpan={6} style={{ padding: 40, textAlign: 'center', color: 'var(--text-muted)' }}>No samples logged yet.</td>
                     </tr>
                   ) : (
                     samples.map(s => (
-                      <tr key={s.id} style={{ borderBottom: '1px solid #f1f5f9' }}>
-                        <td style={{ padding: '12px 16px', fontWeight: 700, fontFamily: 'monospace', color: '#1e3a8a' }}>
+                      <tr key={s.id}>
+                        <td style={{ fontWeight: 700, fontFamily: 'monospace', color: '#0284c7' }}>
                           {s.sample_id}
                         </td>
-                        <td style={{ padding: '12px 16px', fontWeight: 600 }}>{s.sample_type}</td>
-                        <td style={{ padding: '12px 16px', color: '#64748b' }}>
+                        <td style={{ fontWeight: 600 }}>{s.sample_type}</td>
+                        <td style={{ color: 'var(--text-muted)' }}>
                           {s.collection_date ? new Date(s.collection_date).toLocaleString('en-IN') : '—'}
                         </td>
-                        <td style={{ padding: '12px 16px', color: '#0f172a' }}>{s.sampling_location || '—'}</td>
-                        <td style={{ padding: '12px 16px', color: '#64748b' }}>{s.collector_name || 'Inspector'}</td>
-                        <td style={{ padding: '12px 16px' }}>
-                          <span style={{ fontSize: 11, fontWeight: 700, padding: '3px 8px', borderRadius: 6, background: '#eff6ff', color: '#1d4ed8' }}>
+                        <td>{s.sampling_location || '—'}</td>
+                        <td style={{ color: 'var(--text-muted)' }}>{s.collector_name || 'Inspector'}</td>
+                        <td>
+                          <span style={{ fontSize: 11, fontWeight: 700, padding: '3px 8px', borderRadius: 6, background: 'rgba(37, 99, 235, 0.15)', color: '#3b82f6' }}>
                             {s.status}
                           </span>
                         </td>
@@ -588,86 +520,75 @@ export default function SamplingManagement() {
           </div>
         ) : (
           /* Schedule Views: Due / Overdue / Upcoming */
-          <div style={{ background: '#ffffff', borderRadius: 12, border: '1px solid #e2e8f0', overflow: 'hidden' }}>
+          <div className="ir-card overflow-hidden">
             <div style={{ overflowX: 'auto' }}>
-              <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: 13 }}>
+              <table className="ir-table">
                 <thead>
-                  <tr style={{ background: '#f8fafc', borderBottom: '1px solid #e2e8f0' }}>
-                    <th style={{ padding: '12px 16px', fontWeight: 700, color: '#475569', fontSize: 12, textTransform: 'uppercase' }}>Source ID</th>
-                    <th style={{ padding: '12px 16px', fontWeight: 700, color: '#475569', fontSize: 12, textTransform: 'uppercase' }}>Station</th>
-                    <th style={{ padding: '12px 16px', fontWeight: 700, color: '#475569', fontSize: 12, textTransform: 'uppercase' }}>Type</th>
-                    <th style={{ padding: '12px 16px', fontWeight: 700, color: '#475569', fontSize: 12, textTransform: 'uppercase' }}>Testing Required</th>
-                    <th style={{ padding: '12px 16px', fontWeight: 700, color: '#475569', fontSize: 12, textTransform: 'uppercase' }}>Last Sample Date</th>
-                    <th style={{ padding: '12px 16px', fontWeight: 700, color: '#475569', fontSize: 12, textTransform: 'uppercase' }}>Due Date</th>
-                    <th style={{ padding: '12px 16px', fontWeight: 700, color: '#475569', fontSize: 12, textTransform: 'uppercase' }}>Status</th>
-                    <th style={{ padding: '12px 16px', fontWeight: 700, color: '#475569', fontSize: 12, textTransform: 'uppercase', textAlign: 'right' }}>Action</th>
+                  <tr>
+                    <th>Source ID</th>
+                    <th>Station</th>
+                    <th>Type</th>
+                    <th>Testing Required</th>
+                    <th>Last Sample Date</th>
+                    <th>Due Date</th>
+                    <th>Status</th>
+                    <th style={{ textAlign: 'right' }}>Action</th>
                   </tr>
                 </thead>
                 <tbody>
                   {filteredSchedule.length === 0 ? (
                     <tr>
-                      <td colSpan={8} style={{ padding: 40, textAlign: 'center', color: '#64748b' }}>
+                      <td colSpan={8} style={{ padding: 40, textAlign: 'center', color: 'var(--text-muted)' }}>
                         No {activeTab} sampling requirements found matching filters.
                       </td>
                     </tr>
                   ) : (
                     filteredSchedule.map((item, idx) => (
-                      <tr key={idx} style={{ borderBottom: '1px solid #f1f5f9' }}>
-                        <td style={{ padding: '12px 16px' }}>
+                      <tr key={idx}>
+                        <td>
                           <span style={{
                             fontFamily: 'monospace',
                             fontWeight: 800,
-                            color: '#1e3a8a',
-                            background: '#eff6ff',
+                            color: '#0284c7',
+                            background: 'rgba(2, 132, 199, 0.1)',
                             padding: '3px 8px',
                             borderRadius: 6,
-                            border: '1px solid #bfdbfe'
+                            border: '1px solid rgba(2, 132, 199, 0.25)'
                           }}>
                             {item.source.source_id_code}
                           </span>
                         </td>
-                        <td style={{ padding: '12px 16px', fontWeight: 600, color: '#0f172a' }}>
+                        <td style={{ fontWeight: 600 }}>
                           {item.station?.name || '—'} ({item.station?.code || '—'})
                         </td>
-                        <td style={{ padding: '12px 16px', color: '#64748b' }}>{item.source.source_type}</td>
-                        <td style={{ padding: '12px 16px', fontWeight: 700, color: '#0f172a' }}>
+                        <td style={{ color: 'var(--text-muted)' }}>{item.source.source_type}</td>
+                        <td style={{ fontWeight: 700 }}>
                           {item.scheduleType}
                         </td>
-                        <td style={{ padding: '12px 16px', color: '#64748b' }}>
-                          {item.lastDate ? item.lastDate.toLocaleDateString('en-IN') : <span style={{ color: '#cbd5e1' }}>Never</span>}
+                        <td style={{ color: 'var(--text-muted)' }}>
+                          {item.lastDate ? item.lastDate.toLocaleDateString('en-IN') : <span style={{ color: 'var(--text-muted)' }}>Never</span>}
                         </td>
-                        <td style={{ padding: '12px 16px', color: item.status === 'OVERDUE' ? '#dc2626' : '#0f172a', fontWeight: item.status === 'OVERDUE' ? 700 : 500 }}>
+                        <td style={{ color: item.status === 'OVERDUE' ? '#dc2626' : 'var(--text-primary)', fontWeight: item.status === 'OVERDUE' ? 700 : 500 }}>
                           {item.dueDate ? item.dueDate.toLocaleDateString('en-IN') : 'Immediate'}
                         </td>
-                        <td style={{ padding: '12px 16px' }}>
+                        <td>
                           <span style={{
                             fontSize: 11,
                             fontWeight: 800,
                             padding: '3px 8px',
                             borderRadius: 6,
-                            background: item.status === 'OVERDUE' ? '#fef2f2' : item.status === 'DUE' ? '#fffbeb' : '#eff6ff',
-                            color: item.status === 'OVERDUE' ? '#dc2626' : item.status === 'DUE' ? '#d97706' : '#1d4ed8',
-                            border: `1px solid ${item.status === 'OVERDUE' ? '#fecaca' : item.status === 'DUE' ? '#fde68a' : '#bfdbfe'}`
+                            background: item.status === 'OVERDUE' ? 'rgba(220, 38, 38, 0.15)' : item.status === 'DUE' ? 'rgba(217, 119, 6, 0.15)' : 'rgba(37, 99, 235, 0.15)',
+                            color: item.status === 'OVERDUE' ? '#ef4444' : item.status === 'DUE' ? '#f59e0b' : '#3b82f6',
+                            border: `1px solid ${item.status === 'OVERDUE' ? '#ef4444' : item.status === 'DUE' ? '#f59e0b' : '#3b82f6'}`
                           }}>
                             {item.status}
                           </span>
                         </td>
-                        <td style={{ padding: '12px 16px', textAlign: 'right' }}>
+                        <td style={{ textAlign: 'right' }}>
                           <button
                             onClick={() => openSampleModal(item.source, item.scheduleType)}
-                            style={{
-                              background: '#1e3a8a',
-                              color: '#ffffff',
-                              border: 'none',
-                              padding: '6px 12px',
-                              borderRadius: 6,
-                              fontSize: 12,
-                              fontWeight: 700,
-                              cursor: 'pointer',
-                              display: 'inline-flex',
-                              alignItems: 'center',
-                              gap: 4
-                            }}
+                            className="ir-btn-primary"
+                            style={{ padding: '6px 12px', fontSize: 12 }}
                           >
                             <CalendarCheck size={13} />
                             Collect Sample
@@ -692,33 +613,32 @@ export default function SamplingManagement() {
           left: 0,
           right: 0,
           bottom: 0,
-          background: 'rgba(15, 23, 42, 0.65)',
-          backdropFilter: 'blur(4px)',
+          background: 'rgba(5, 10, 23, 0.75)',
+          backdropFilter: 'blur(6px)',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
           zIndex: 100,
           padding: 20
         }}>
-          <div style={{
-            background: '#ffffff',
+          <div className="ir-card" style={{
             borderRadius: 14,
             width: '100%',
             maxWidth: 620,
             maxHeight: '90vh',
             display: 'flex',
             flexDirection: 'column',
-            boxShadow: '0 20px 25px -5px rgba(0,0,0,0.2)',
+            boxShadow: '0 20px 30px -5px rgba(0,0,0,0.4)',
             overflow: 'hidden'
           }}>
             {/* Modal Header */}
             <div style={{
               padding: '18px 24px',
-              borderBottom: '1px solid #e2e8f0',
+              borderBottom: '1px solid var(--border-color)',
               display: 'flex',
               justifyContent: 'space-between',
               alignItems: 'center',
-              background: '#0f172a',
+              background: 'linear-gradient(135deg, #1e3a8a, #2563eb)',
               color: '#ffffff'
             }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
@@ -727,7 +647,7 @@ export default function SamplingManagement() {
               </div>
               <button
                 onClick={() => setIsModalOpen(false)}
-                style={{ background: 'transparent', border: 'none', color: '#94a3b8', cursor: 'pointer', padding: 4 }}
+                style={{ background: 'transparent', border: 'none', color: '#e2e8f0', cursor: 'pointer', padding: 4 }}
               >
                 <X size={20} />
               </button>
@@ -751,14 +671,15 @@ export default function SamplingManagement() {
 
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
                 <div>
-                  <label style={{ display: 'block', fontSize: 12.5, fontWeight: 700, color: '#334155', marginBottom: 6 }}>
+                  <label style={{ display: 'block', fontSize: 12.5, fontWeight: 700, color: 'var(--text-secondary)', marginBottom: 6 }}>
                     Water Source *
                   </label>
                   <select
                     required
                     value={form.water_source_id}
                     onChange={e => setForm({ ...form, water_source_id: e.target.value })}
-                    style={{ width: '100%', padding: '8px 12px', border: '1px solid #cbd5e1', borderRadius: 8, fontSize: 13 }}
+                    className="ir-input"
+                    style={{ width: '100%' }}
                   >
                     <option value="">Select Water Source</option>
                     {sources.map(src => {
@@ -773,7 +694,7 @@ export default function SamplingManagement() {
                 </div>
 
                 <div>
-                  <label style={{ display: 'block', fontSize: 12.5, fontWeight: 700, color: '#334155', marginBottom: 6 }}>
+                  <label style={{ display: 'block', fontSize: 12.5, fontWeight: 700, color: 'var(--text-secondary)', marginBottom: 6 }}>
                     Sample ID *
                   </label>
                   <input
@@ -781,20 +702,22 @@ export default function SamplingManagement() {
                     required
                     value={form.sample_id}
                     onChange={e => setForm({ ...form, sample_id: e.target.value })}
-                    style={{ width: '100%', padding: '8px 12px', border: '1px solid #cbd5e1', borderRadius: 8, fontSize: 13 }}
+                    className="ir-input"
+                    style={{ width: '100%' }}
                   />
                 </div>
               </div>
 
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
                 <div>
-                  <label style={{ display: 'block', fontSize: 12.5, fontWeight: 700, color: '#334155', marginBottom: 6 }}>
+                  <label style={{ display: 'block', fontSize: 12.5, fontWeight: 700, color: 'var(--text-secondary)', marginBottom: 6 }}>
                     Sample Type *
                   </label>
                   <select
                     value={form.sample_type}
                     onChange={e => setForm({ ...form, sample_type: e.target.value })}
-                    style={{ width: '100%', padding: '8px 12px', border: '1px solid #cbd5e1', borderRadius: 8, fontSize: 13 }}
+                    className="ir-input"
+                    style={{ width: '100%' }}
                   >
                     <option value="Bacteriological">Bacteriological (IS 10500)</option>
                     <option value="Chemical">Chemical & Physical</option>
@@ -802,21 +725,22 @@ export default function SamplingManagement() {
                 </div>
 
                 <div>
-                  <label style={{ display: 'block', fontSize: 12.5, fontWeight: 700, color: '#334155', marginBottom: 6 }}>
+                  <label style={{ display: 'block', fontSize: 12.5, fontWeight: 700, color: 'var(--text-secondary)', marginBottom: 6 }}>
                     Collector Name / Inspector
                   </label>
                   <input
                     type="text"
                     value={form.collector_name}
                     onChange={e => setForm({ ...form, collector_name: e.target.value })}
-                    style={{ width: '100%', padding: '8px 12px', border: '1px solid #cbd5e1', borderRadius: 8, fontSize: 13 }}
+                    className="ir-input"
+                    style={{ width: '100%' }}
                   />
                 </div>
               </div>
 
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
                 <div>
-                  <label style={{ display: 'block', fontSize: 12.5, fontWeight: 700, color: '#334155', marginBottom: 6 }}>
+                  <label style={{ display: 'block', fontSize: 12.5, fontWeight: 700, color: 'var(--text-secondary)', marginBottom: 6 }}>
                     Collection Date *
                   </label>
                   <input
@@ -824,25 +748,27 @@ export default function SamplingManagement() {
                     required
                     value={form.collection_date}
                     onChange={e => setForm({ ...form, collection_date: e.target.value })}
-                    style={{ width: '100%', padding: '8px 12px', border: '1px solid #cbd5e1', borderRadius: 8, fontSize: 13 }}
+                    className="ir-input"
+                    style={{ width: '100%' }}
                   />
                 </div>
 
                 <div>
-                  <label style={{ display: 'block', fontSize: 12.5, fontWeight: 700, color: '#334155', marginBottom: 6 }}>
+                  <label style={{ display: 'block', fontSize: 12.5, fontWeight: 700, color: 'var(--text-secondary)', marginBottom: 6 }}>
                     Collection Time
                   </label>
                   <input
                     type="time"
                     value={form.collection_time}
                     onChange={e => setForm({ ...form, collection_time: e.target.value })}
-                    style={{ width: '100%', padding: '8px 12px', border: '1px solid #cbd5e1', borderRadius: 8, fontSize: 13 }}
+                    className="ir-input"
+                    style={{ width: '100%' }}
                   />
                 </div>
               </div>
 
               <div>
-                <label style={{ display: 'block', fontSize: 12.5, fontWeight: 700, color: '#334155', marginBottom: 6 }}>
+                <label style={{ display: 'block', fontSize: 12.5, fontWeight: 700, color: 'var(--text-secondary)', marginBottom: 6 }}>
                   Exact Sampling Location / Tap Point
                 </label>
                 <input
@@ -850,12 +776,13 @@ export default function SamplingManagement() {
                   placeholder="e.g. Platform 1 Drinking Hydrant #4"
                   value={form.sampling_location}
                   onChange={e => setForm({ ...form, sampling_location: e.target.value })}
-                  style={{ width: '100%', padding: '8px 12px', border: '1px solid #cbd5e1', borderRadius: 8, fontSize: 13 }}
+                  className="ir-input"
+                  style={{ width: '100%' }}
                 />
               </div>
 
               <div>
-                <label style={{ display: 'block', fontSize: 12.5, fontWeight: 700, color: '#334155', marginBottom: 6 }}>
+                <label style={{ display: 'block', fontSize: 12.5, fontWeight: 700, color: 'var(--text-secondary)', marginBottom: 6 }}>
                   Remarks / Observations
                 </label>
                 <textarea
@@ -863,22 +790,23 @@ export default function SamplingManagement() {
                   placeholder="e.g. Water clear, no odor, residual chlorine field kit test indicated 0.4 ppm"
                   value={form.remarks}
                   onChange={e => setForm({ ...form, remarks: e.target.value })}
-                  style={{ width: '100%', padding: '8px 12px', border: '1px solid #cbd5e1', borderRadius: 8, fontSize: 13 }}
+                  className="ir-input"
+                  style={{ width: '100%', fontFamily: 'inherit' }}
                 />
               </div>
 
-              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 12, marginTop: 12, paddingTop: 16, borderTop: '1px solid #e2e8f0' }}>
+              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 12, marginTop: 12, paddingTop: 16, borderTop: '1px solid var(--border-color)' }}>
                 <button
                   type="button"
                   onClick={() => setIsModalOpen(false)}
-                  style={{ padding: '9px 16px', borderRadius: 8, border: '1px solid #cbd5e1', background: '#ffffff', color: '#475569', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}
+                  className="ir-btn-secondary"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
                   disabled={submitting}
-                  style={{ padding: '9px 20px', borderRadius: 8, border: 'none', background: '#1e3a8a', color: '#ffffff', fontSize: 13, fontWeight: 700, cursor: submitting ? 'not-allowed' : 'pointer' }}
+                  className="ir-btn-primary"
                 >
                   {submitting ? 'Submitting...' : 'Record Sample'}
                 </button>

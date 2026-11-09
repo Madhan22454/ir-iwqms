@@ -83,123 +83,109 @@ export default function UserManagement() {
   );
 
   return (
-    <div style={{ padding: '24px 28px', display: 'flex', flexDirection: 'column', gap: 20 }}>
-      {/* Header */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 12 }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-          <div style={{ background: '#f5f3ff', padding: 10, borderRadius: 12, border: '1px solid #ddd6fe' }}>
-            <Users size={22} color="#6d28d9" />
+    <div className="ir-page">
+      <div className="ir-container space-y-6">
+        {/* Header */}
+        <div className="ir-header-card flex items-center justify-between flex-wrap gap-4">
+          <div className="flex items-center gap-3">
+            <div className="p-3 rounded-xl bg-purple-500/15 border border-purple-500/30">
+              <Users size={24} className="text-purple-400" />
+            </div>
+            <div>
+              <h2 className="text-2xl font-black tracking-tight" style={{ color: 'var(--text-primary)' }}>
+                User & Role Management
+              </h2>
+              <p className="text-sm font-medium mt-0.5" style={{ color: 'var(--text-secondary)' }}>
+                Manage railway medical officers, engineers, lab analysts, and control access permissions
+              </p>
+            </div>
           </div>
-          <div>
-            <h2 style={{ fontSize: 22, fontWeight: 800, color: '#0f172a', margin: 0, letterSpacing: '-0.4px' }}>
-              User & Role Management
-            </h2>
-            <p style={{ fontSize: 13, color: '#64748b', marginTop: 2 }}>
-              Manage system users, assign roles, and control access levels
-            </p>
+          <div className="flex items-center gap-3">
+            <div className="relative">
+              <Search size={16} style={{ position: 'absolute', left: 12, top: 11, color: 'var(--text-muted)' }} />
+              <input 
+                type="text" 
+                placeholder="Search officers..." 
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                className="ir-input"
+                style={{ paddingLeft: 36, width: 220 }}
+              />
+            </div>
+            <button 
+              onClick={fetchUsers} 
+              className="ir-btn-secondary flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold"
+            >
+              <RefreshCw size={14} className={loading ? 'animate-spin' : ''} /> Refresh
+            </button>
           </div>
         </div>
-        <div style={{ display: 'flex', gap: 10 }}>
-          <div style={{ position: 'relative' }}>
-            <Search size={16} color="#94a3b8" style={{ position: 'absolute', left: 12, top: 10 }} />
-            <input 
-              type="text" 
-              placeholder="Search users..." 
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              style={{
-                padding: '8px 12px 8px 36px', borderRadius: 8, border: '1px solid #e2e8f0',
-                fontSize: 13, width: 220, outline: 'none'
-              }}
-            />
-          </div>
-          <button onClick={fetchUsers} style={{
-            display: 'flex', alignItems: 'center', gap: 6, padding: '8px 14px', borderRadius: 8,
-            border: '1px solid #e2e8f0', background: 'white', color: '#475569', fontSize: 13, fontWeight: 600,
-            cursor: 'pointer',
-          }}>
-            <RefreshCw size={14} /> Refresh
-          </button>
-        </div>
-      </div>
 
-      {/* Table Card */}
-      <div style={{
-        background: 'white', borderRadius: 16,
-        boxShadow: '0 1px 4px rgba(0,0,0,0.06)', border: '1px solid #f1f5f9', overflow: 'hidden',
-      }}>
-        {loading ? (
-          <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: 260 }}>
-            <div style={{
-              width: 36, height: 36, border: '3px solid #e2e8f0',
-              borderTopColor: '#2563eb', borderRadius: '50%',
-              animation: 'spin 0.8s linear infinite',
-            }} />
-          </div>
-        ) : (
-          <div style={{ overflowX: 'auto', maxHeight: '600px' }}>
-            <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-              <thead>
-                <tr style={{ background: '#f8fafc', position: 'sticky', top: 0, zIndex: 10 }}>
-                  <th style={thStyle}>Employee ID</th>
-                  <th style={thStyle}>Name</th>
-                  <th style={thStyle}>Email</th>
-                  <th style={thStyle}>Role</th>
-                  <th style={thStyle}>Status</th>
-                  <th style={thStyle}>Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {filteredUsers.map((u, idx) => (
-                  <tr key={u.id} style={{
-                    borderBottom: '1px solid #f8fafc',
-                    background: idx % 2 === 0 ? 'white' : '#fafafa',
-                  }}>
-                    <td style={tdStyle}><strong>{u.employee_id}</strong></td>
-                    <td style={tdStyle}>{u.name}</td>
-                    <td style={tdStyle}>{u.email}</td>
-                    <td style={tdStyle}>
-                      <span style={{
-                        padding: '3px 8px', borderRadius: 6, fontSize: 11, fontWeight: 700,
-                        background: '#e0e7ff', color: '#3730a3', display: 'inline-flex', alignItems: 'center', gap: 4
-                      }}>
-                        <Shield size={10} /> {u.role}
-                      </span>
-                    </td>
-                    <td style={tdStyle}>
-                      <span style={{
-                        padding: '2px 8px', borderRadius: 10, fontSize: 10.5, fontWeight: 800,
-                        background: u.is_active ? '#f0fdf4' : '#fef2f2',
-                        color: u.is_active ? '#16a34a' : '#dc2626',
-                      }}>
-                        {u.is_active ? 'ACTIVE' : 'INACTIVE'}
-                      </span>
-                    </td>
-                    <td style={tdStyle}>
-                      <button 
-                        onClick={() => handleEditClick(u)}
-                        style={{
-                          background: 'white', border: '1px solid #e2e8f0', padding: '4px 8px', 
-                          borderRadius: 6, color: '#3b82f6', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4,
-                          fontSize: 12, fontWeight: 600
-                        }}
-                      >
-                        <Edit2 size={12} /> Edit
-                      </button>
-                    </td>
-                  </tr>
-                ))}
-                {filteredUsers.length === 0 && (
+        {/* Table Card */}
+        <div className="ir-card overflow-hidden">
+          {loading ? (
+            <div className="text-center py-20" style={{ color: 'var(--text-muted)' }}>
+              <RefreshCw className="w-6 h-6 animate-spin mx-auto mb-2 text-sky-500" />
+              Loading authorized user accounts...
+            </div>
+          ) : (
+            <div style={{ overflowX: 'auto', maxHeight: '600px' }}>
+              <table className="ir-table">
+                <thead>
                   <tr>
-                    <td colSpan={6} style={{ textAlign: 'center', padding: '40px 0', color: '#94a3b8', fontSize: 14 }}>
-                      No users found.
-                    </td>
+                    <th>Employee ID</th>
+                    <th>Officer Name</th>
+                    <th>Email Address</th>
+                    <th>Assigned Role</th>
+                    <th>Status</th>
+                    <th>Actions</th>
                   </tr>
-                )}
-              </tbody>
-            </table>
-          </div>
-        )}
+                </thead>
+                <tbody>
+                  {filteredUsers.map((u) => (
+                    <tr key={u.id}>
+                      <td className="font-mono text-xs font-bold" style={{ color: '#0284c7' }}>{u.employee_id}</td>
+                      <td className="font-bold text-xs" style={{ color: 'var(--text-primary)' }}>{u.name}</td>
+                      <td className="text-xs" style={{ color: 'var(--text-secondary)' }}>{u.email}</td>
+                      <td>
+                        <span style={{
+                          padding: '3px 8px', borderRadius: 6, fontSize: 11, fontWeight: 700,
+                          background: 'rgba(99, 102, 241, 0.15)', color: '#818cf8', display: 'inline-flex', alignItems: 'center', gap: 4
+                        }}>
+                          <Shield size={10} /> {u.role}
+                        </span>
+                      </td>
+                      <td>
+                        <span style={{
+                          padding: '2px 8px', borderRadius: 10, fontSize: 10.5, fontWeight: 800,
+                          background: u.is_active ? 'rgba(16, 185, 129, 0.15)' : 'rgba(239, 68, 68, 0.15)',
+                          color: u.is_active ? '#10b981' : '#ef4444',
+                        }}>
+                          {u.is_active ? 'ACTIVE' : 'INACTIVE'}
+                        </span>
+                      </td>
+                      <td>
+                        <button 
+                          onClick={() => handleEditClick(u)}
+                          className="ir-btn-secondary inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-bold"
+                        >
+                          <Edit2 size={12} /> Edit
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                  {filteredUsers.length === 0 && (
+                    <tr>
+                      <td colSpan={6} style={{ textAlign: 'center', padding: '40px 0', color: 'var(--text-muted)', fontSize: 14 }}>
+                        No user accounts found matching query.
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
       </div>
 
       {/* Edit Modal */}
@@ -306,18 +292,6 @@ export default function UserManagement() {
     </div>
   );
 }
-
-const thStyle = {
-  padding: '12px 18px', textAlign: 'left' as const,
-  fontSize: 11, fontWeight: 700, color: '#64748b',
-  textTransform: 'uppercase' as const, letterSpacing: '0.05em',
-  borderBottom: '1px solid #e2e8f0', whiteSpace: 'nowrap' as const,
-};
-
-const tdStyle = {
-  padding: '12px 18px', fontSize: 12.5, color: '#334155',
-  whiteSpace: 'nowrap' as const,
-};
 
 const labelStyle = {
   display: 'block', fontSize: 12, fontWeight: 600, color: '#475569', marginBottom: 6

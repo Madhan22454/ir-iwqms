@@ -108,8 +108,8 @@ export default function AlertDetail() {
   const fmtDate = (d: string) => d ? new Date(d).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }) : '—';
 
   if (loading) return (
-    <div className="min-h-screen flex items-center justify-center" style={{ background: 'linear-gradient(135deg,#0f172a 0%,#1e1b4b 100%)' }}>
-      <Loader2 className="w-8 h-8 text-indigo-400 animate-spin" />
+    <div className="ir-page flex items-center justify-center">
+      <Loader2 className="w-8 h-8 text-sky-500 animate-spin" />
     </div>
   );
   if (!alert) return null;
@@ -117,29 +117,31 @@ export default function AlertDetail() {
   const rc = RESULT_CONFIG[alert.sample_result] || RESULT_CONFIG['UNFIT'];
 
   return (
-    <div className="min-h-screen p-6" style={{ background: 'linear-gradient(135deg,#0f172a 0%,#1e1b4b 100%)' }}>
-      <div className="max-w-6xl mx-auto space-y-6">
+    <div className="ir-page">
+      <div className="ir-container space-y-6">
         {/* Header */}
-        <div className="flex items-start justify-between">
+        <div className="ir-header-card flex items-start justify-between">
           <div className="flex items-center gap-3">
-            <Link to="/alerts" className="p-2 rounded-lg text-white/40 hover:text-white hover:bg-white/10 transition-colors">
+            <Link to="/alerts" className="ir-btn-secondary p-2 rounded-lg transition-colors">
               <ChevronLeft className="w-5 h-5" />
             </Link>
             <div>
               <div className="flex items-center gap-3">
-                <h1 className="text-2xl font-bold text-white font-mono">{alert.alert_id}</h1>
+                <h1 className="text-2xl font-black font-mono" style={{ color: 'var(--text-primary)' }}>{alert.alert_id}</h1>
                 <span className={`px-3 py-1 rounded-full text-sm font-bold border ${rc.badge}`}>{alert.sample_result}</span>
                 <span className="px-2 py-1 rounded-full text-xs font-bold bg-red-900/50 text-red-400 border border-red-600/40">{alert.severity}</span>
                 {isEscalated && (
                   <span className="px-2 py-1 rounded-full text-xs font-bold bg-red-900 text-red-300 border border-red-500 animate-pulse">ESCALATED L{alert.escalation_level}</span>
                 )}
               </div>
-              <p className="text-blue-300 text-sm mt-1">{alert.source_id_code} · {alert.zone_name} · {alert.division_name} · {alert.station_name}</p>
+              <p className="text-sm mt-1" style={{ color: 'var(--text-secondary)' }}>
+                {alert.source_id_code} · {alert.zone_name} · {alert.division_name} · {alert.station_name}
+              </p>
             </div>
           </div>
           <div className="flex gap-2">
             <Link to={`/alerts/${id}/notice`} target="_blank"
-              className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium text-white border border-white/20 hover:bg-white/10 transition-all">
+              className="ir-btn-secondary flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all">
               <Printer className="w-4 h-4" /> Print Notice
             </Link>
           </div>
@@ -152,8 +154,8 @@ export default function AlertDetail() {
         )}
 
         {/* Workflow Timeline */}
-        <div className="rounded-2xl p-6" style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)' }}>
-          <h2 className="text-white font-semibold mb-6">Workflow Progress</h2>
+        <div className="ir-card p-6">
+          <h2 className="font-bold text-base mb-6" style={{ color: 'var(--text-primary)' }}>Workflow Progress</h2>
           <div className="flex items-center gap-0 overflow-x-auto pb-2">
             {WORKFLOW_STEPS.map((step, i) => {
               const done = isEscalated ? false : currentStepIdx > i;
