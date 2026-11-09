@@ -26,6 +26,7 @@ import {
 import { API_URL } from '../config/api';
 import { FALLBACK_STATIONS } from '../data/gisFallbackData';
 import { INDIA_SOI_BOUNDARY } from '../data/indiaBoundaryGeojson';
+import { INDIA_OFFICIAL_STATES_GEOJSON } from '../data/indiaOfficialStatesGeojson';
 import { INDIAN_RAILWAY_TRUNK_CORRIDORS } from '../data/indiaRailwayCorridors';
 
 const DEFAULT_SUMMARY: DashboardSummaryData = {
@@ -202,14 +203,18 @@ export function Dashboard() {
       attributionControl: false,
     });
 
-    // Satellite Aerial (Esri) - Clean, zero disputed lines, 100% compliant with Survey of India
-    L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
-      maxZoom: 18,
-      attribution: 'Esri World Imagery &mdash; Survey of India Sovereign Demarcation'
+    // 1. Official Survey of India State Boundaries (From Official India SVG)
+    L.geoJSON(INDIA_OFFICIAL_STATES_GEOJSON as any, {
+      style: {
+        color: '#38bdf8',
+        weight: 1.0,
+        opacity: 0.65,
+        fillColor: '#0f172a',
+        fillOpacity: 0.94,
+      }
     }).addTo(map);
 
-    // Official Survey of India (SOI) Sovereign Boundary Layer
-    // Outer Glow
+    // 2. Sovereign Outer Boundary Glow & Stroke
     L.geoJSON(INDIA_SOI_BOUNDARY as any, {
       style: {
         color: '#0284c7',
@@ -219,14 +224,12 @@ export function Dashboard() {
       }
     }).addTo(map);
 
-    // Sovereign Boundary Stroke
     L.geoJSON(INDIA_SOI_BOUNDARY as any, {
       style: {
         color: '#0369a1',
         weight: 2.5,
         opacity: 0.95,
-        fillColor: '#0284c7',
-        fillOpacity: 0.03,
+        fill: false,
       }
     }).addTo(map);
 
