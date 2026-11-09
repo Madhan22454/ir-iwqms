@@ -539,26 +539,28 @@ export function Layout() {
 
         {/* Content Viewport with Vertical Scroll */}
         <div style={{ flex: 1, overflow: "hidden", display: "flex", flexDirection: "column", position: "relative" }}>
-          <div style={{ flex: 1, height: "100%", overflowY: "auto" }}>
+          <div style={{ flex: 1, height: "100%", overflowY: location.pathname.startsWith('/gis') ? 'hidden' : 'auto' }}>
             <Outlet />
           </div>
 
-          <footer
-            style={{
-              padding: "12px 16px",
-              textAlign: "center",
-              fontSize: "12px",
-              color: "#64748b",
-              fontWeight: 600,
-              borderTop: "1px solid #e2e8f0",
-              marginTop: "auto",
-              backgroundColor: "#f8fafc",
-              letterSpacing: "0.02em",
-              flexShrink: 0,
-            }}
-          >
-            DONE BY NIRANJAN.R | ARUN KARTHICK .P | MADHAN KUMAR .S
-          </footer>
+          {!location.pathname.startsWith('/gis') && (
+            <footer
+              style={{
+                padding: "12px 16px",
+                textAlign: "center",
+                fontSize: "12px",
+                color: "#64748b",
+                fontWeight: 600,
+                borderTop: "1px solid #e2e8f0",
+                marginTop: "auto",
+                backgroundColor: "#f8fafc",
+                letterSpacing: "0.02em",
+                flexShrink: 0,
+              }}
+            >
+              DONE BY NIRANJAN.R | ARUN KARTHICK .P | MADHAN KUMAR .S
+            </footer>
+          )}
         </div>
       </main>
 

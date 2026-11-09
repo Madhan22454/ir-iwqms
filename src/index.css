@@ -100,7 +100,30 @@ body {
   to { opacity: 1; transform: translateY(0); }
 }
 
+/* Global Animations */
+@keyframes pulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.6; transform: scale(1.15); }
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
 /* Fix for z-index of leaflet controls vs floating panels */
 .leaflet-top, .leaflet-bottom {
   z-index: 400 !important;
+}
+
+/* Ensure Leaflet containers fill their parent */
+.leaflet-container {
+  width: 100%;
+  height: 100%;
+}
+
+/* Custom marker and cluster icon reset (prevent Leaflet defaults) */
+.custom-marker,
+.custom-cluster-icon {
+  background: transparent !important;
+  border: none !important;
 }
