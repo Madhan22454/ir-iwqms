@@ -75,6 +75,15 @@ const WS_STATUS_MAP: Record<string, string> = {
   'COMPLIANT': 'COMPLIANT'
 };
 
+function getStationDisplayName(fullName: string): string {
+  if (fullName.includes('Shri Mata Vaishno Devi')) return 'Katra';
+  if (fullName.includes('Hazrat Nizamuddin')) return 'Nizamuddin';
+  if (fullName.includes('Chhatrapati Shivaji')) return 'CSMT';
+  return fullName
+    .replace(/\s+(Jn|Junction|Cantt|City|Central|Terminus|Trm)$/i, '')
+    .trim();
+}
+
 export default function GISMap() {
   const navigate = useNavigate();
   const containerRef = useRef<HTMLDivElement>(null);
@@ -100,12 +109,26 @@ export default function GISMap() {
   const [showCorridors, setShowCorridors] = useState(true);
   const [mapTheme, setMapTheme] = useState<'iri' | 'dark'>('iri');
   const [copiedCoords, setCopiedCoords] = useState(false);
+  const [markerSizeMode, setMarkerSizeMode] = useState<'adaptive' | 'compact' | 'minimal'>('adaptive');
 
   // Pan and Zoom state
   const [zoom, setZoom] = useState(1);
   const [pan, setPan] = useState({ x: 0, y: 0 });
   const [isDragging, setIsDragging] = useState(false);
   const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
+
+  // Zoom-adaptive scale factor for monitored station icons so they never obstruct neighboring stations when zooming in
+  const highlightIconScale = useMemo(() => {
+    // zoom ranges from 0.7 to 4.0
+    // At zoom 1.0 -> 1.0 (pan-India prominence)
+    // At zoom 1.5 -> 0.78
+    // At zoom 2.0 -> 0.62
+    // At zoom 3.0 -> 0.48
+    // At zoom 4.0 -> 0.38
+    const baseInverse = Math.max(0.32, Math.min(1.0, 1 / Math.pow(zoom, 0.75)));
+    const modeMultiplier = markerSizeMode === 'minimal' ? 0.62 : (markerSizeMode === 'compact' ? 0.78 : 1.0);
+    return baseInverse * modeMultiplier;
+  }, [zoom, markerSizeMode]);
 
   // Toggle true Fullscreen mode
   const toggleFullscreen = () => {
@@ -479,6 +502,19 @@ export default function GISMap() {
               <span className="hidden xl:inline">All Rail Stations ({ALL_INDIAN_RAIL_STATIONS.length})</span>
             </button>
 
+            {/* HIGHLIGHTED MARKER SIZE TOGGLE */}
+            <button
+              onClick={() => {
+                setMarkerSizeMode(prev => prev === 'adaptive' ? 'compact' : (prev === 'compact' ? 'minimal' : 'adaptive'));
+              }}
+              title={`Record Station Icon Size: ${markerSizeMode.toUpperCase()} (Click to cycle Adaptive / Compact / Minimal)`}
+              className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border text-xs font-bold bg-slate-800 hover:bg-slate-750 text-slate-300 border-slate-700 transition-all"
+            >
+              <span className={`w-2 h-2 rounded-full ${markerSizeMode === 'minimal' ? 'bg-emerald-400' : (markerSizeMode === 'compact' ? 'bg-amber-400' : 'bg-rose-500')} shadow-sm shrink-0`}></span>
+              <span className="hidden md:inline text-slate-400">Markers:</span>
+              <span className="text-amber-300 font-mono capitalize">{markerSizeMode}</span>
+            </button>
+
             {/* FULLSCREEN TOGGLE BUTTON */}
             <button
               onClick={toggleFullscreen}
@@ -719,7 +755,7 @@ export default function GISMap() {
             <defs>
               {/* Radiant Glow Filter for Monitored Stations with Records */}
               <filter id="station-glow" x="-50%" y="-50%" width="200%" height="200%">
-                <feGaussianBlur in="SourceGraphic" stdDeviation="3.8" result="blur" />
+                <feGaussianBlur in="SourceGraphic" stdDeviation="2.2" result="blur" />
                 <feMerge>
                   <feMergeNode in="blur" />
                   <feMergeNode in="SourceGraphic" />
@@ -842,12 +878,13 @@ export default function GISMap() {
               <g id="regular-railway-stations-layer">
                 {regularNetworkStations.map(stn => {
                   const isHovered = hoveredRegularStation?.code === stn.code;
+                  const displayName = getStationDisplayName(stn.name);
 
                   return (
                     <g
                       key={stn.code}
-                      className="cursor-pointer transition-transform duration-100 hover:scale-125"
-                      style={{ transformOrigin: `${stn.svgX}px ${stn.svgY}px` }}
+                      className="cursor-pointer"
+                      transform={`translate(${stn.svgX}, ${stn.svgY})`}
                       onMouseEnter={() => setHoveredRegularStation(stn)}
                       onMouseLeave={() => setHoveredRegularStation(null)}
                       onClick={(e) => {
@@ -857,9 +894,9 @@ export default function GISMap() {
                     >
                       {/* Small Black Dot */}
                       <circle
-                        cx={stn.svgX}
-                        cy={stn.svgY}
-                        r={isHovered ? 2.8 : 1.9}
+                        cx={0}
+                        cy={0}
+                        r={isHovered ? 2.8 : 1.8}
                         fill="#0f172a"
                         stroke="#ffffff"
                         strokeWidth={isHovered ? 1.0 : 0.6}
@@ -867,21 +904,21 @@ export default function GISMap() {
 
                       {/* Station Name in Cartographic Halo */}
                       <text
-                        x={stn.svgX}
-                        y={stn.svgY - 3.6}
+                        x={0}
+                        y={-3.4}
                         textAnchor="middle"
                         fill={mapTheme === 'iri' ? '#1e293b' : '#cbd5e1'}
-                        fontSize="5.2"
+                        fontSize={zoom >= 2.5 ? "4.4" : "4.8"}
                         fontWeight="700"
                         fontFamily="system-ui, -apple-system, sans-serif"
                         paintOrder="stroke"
                         stroke={mapTheme === 'iri' ? '#ffffff' : '#090e17'}
-                        strokeWidth="1.8"
+                        strokeWidth={zoom >= 2.5 ? "1.4" : "1.8"}
                         strokeLinejoin="round"
                         className="pointer-events-none select-none"
                         opacity={zoom >= 1.1 ? 1 : 0.85}
                       >
-                        {stn.name.split(' ')[0]}
+                        {displayName}
                       </text>
                     </g>
                   );
@@ -889,18 +926,22 @@ export default function GISMap() {
               </g>
             )}
 
-            {/* 4. MONITORED STATIONS WITH TELEMETRY RECORDS (GLOWING) */}
+            {/* 4. MONITORED STATIONS WITH TELEMETRY RECORDS (GLOWING WITH ZOOM-ADAPTIVE PROPORTIONS) */}
             <g id="monitored-stations-layer">
               {filteredStations.map(stn => {
                 const isSelected = selectedStation?.id === stn.id;
+                const isHovered = hoveredStation?.id === stn.id;
                 const isUrgent = stn.status === 'UNFIT' || stn.status === 'PERSISTENT_FAILURE' || stn.status === 'OVERDUE';
                 const statusColor = stn.color;
+
+                const hoverFactor = isHovered ? 1.25 : 1.0;
+                const activeScale = highlightIconScale * hoverFactor;
 
                 return (
                   <g 
                     key={stn.id}
-                    className="cursor-pointer transition-transform duration-150 hover:scale-125"
-                    style={{ transformOrigin: `${stn.svgX}px ${stn.svgY}px` }}
+                    className="cursor-pointer"
+                    transform={`translate(${stn.svgX}, ${stn.svgY})`}
                     onClick={(e) => {
                       e.stopPropagation();
                       setSelectedStation(stn);
@@ -908,72 +949,78 @@ export default function GISMap() {
                     onMouseEnter={() => setHoveredStation(stn)}
                     onMouseLeave={() => setHoveredStation(null)}
                   >
-                    {/* Glowing Aura Ring for Monitored Stations with Records */}
-                    <circle
-                      cx={stn.svgX}
-                      cy={stn.svgY}
-                      r={isSelected ? 13 : 9}
-                      fill={statusColor}
-                      fillOpacity={mapTheme === 'iri' ? 0.35 : 0.45}
-                      filter="url(#station-glow)"
-                    />
-
-                    {/* Concentric Steady Alert Halo Ring for Urgent Stations */}
-                    {isUrgent && (
+                    <g 
+                      transform={`scale(${activeScale})`}
+                      style={{ transition: 'transform 0.12s ease-out' }}
+                    >
+                      {/* Radiant Glowing Aura */}
                       <circle
-                        cx={stn.svgX}
-                        cy={stn.svgY}
-                        r={isSelected ? 11 : 8.5}
-                        fill="none"
-                        stroke={statusColor}
-                        strokeWidth="1.4"
-                        strokeOpacity="0.85"
-                        strokeDasharray="2.5 2.5"
+                        cx={0}
+                        cy={0}
+                        r={isSelected ? 10.0 : 7.2}
+                        fill={statusColor}
+                        fillOpacity={mapTheme === 'iri' ? 0.32 : 0.42}
+                        filter="url(#station-glow)"
                       />
-                    )}
 
-                    {/* Prominent Station Junction Ring */}
-                    <circle
-                      cx={stn.svgX}
-                      cy={stn.svgY}
-                      r={isSelected ? 6.5 : 4.8}
-                      fill="#ffffff"
-                      stroke={statusColor}
-                      strokeWidth={isSelected ? 2.6 : 2.0}
-                      className="shadow-sm"
-                    />
+                      {/* Concentric Steady Alert Halo Ring for Urgent Stations */}
+                      {isUrgent && (
+                        <circle
+                          cx={0}
+                          cy={0}
+                          r={isSelected ? 8.2 : 6.0}
+                          fill="none"
+                          stroke={statusColor}
+                          strokeWidth="1.1"
+                          strokeOpacity="0.85"
+                          strokeDasharray="2.2 2.2"
+                        />
+                      )}
 
-                    {/* Glowing Inner Telemetry Dot */}
-                    <circle
-                      cx={stn.svgX}
-                      cy={stn.svgY}
-                      r={isSelected ? 3.0 : 2.2}
-                      fill={statusColor}
-                    />
-
-                    {/* Station Code Badge Pill with Status Border */}
-                    <g transform={`translate(${stn.svgX}, ${stn.svgY - 7.5})`}>
-                      <rect
-                        x="-15"
-                        y="-7.5"
-                        width="30"
-                        height="11"
-                        rx="3"
-                        fill="#090e17"
+                      {/* Prominent Station Junction Ring */}
+                      <circle
+                        cx={0}
+                        cy={0}
+                        r={isSelected ? 4.8 : 3.4}
+                        fill="#ffffff"
                         stroke={statusColor}
-                        strokeWidth="1.1"
+                        strokeWidth={isSelected ? 2.2 : 1.6}
                       />
-                      <text
-                        x="0"
-                        y="1.2"
-                        textAnchor="middle"
-                        fill="#f8fafc"
-                        fontSize="6.6"
-                        fontWeight="800"
-                        fontFamily="ui-monospace, monospace"
-                      >
-                        {stn.code}
-                      </text>
+
+                      {/* Glowing Inner Telemetry Dot */}
+                      <circle
+                        cx={0}
+                        cy={0}
+                        r={isSelected ? 2.4 : 1.6}
+                        fill={statusColor}
+                      />
+
+                      {/* Station Code Badge Pill */}
+                      {markerSizeMode !== 'minimal' && (
+                        <g transform="translate(0, -6.0)">
+                          <rect
+                            x="-10.5"
+                            y="-4.8"
+                            width="21"
+                            height="8.2"
+                            rx="2.2"
+                            fill="#090e17"
+                            stroke={statusColor}
+                            strokeWidth="0.9"
+                          />
+                          <text
+                            x="0"
+                            y="1.1"
+                            textAnchor="middle"
+                            fill="#f8fafc"
+                            fontSize="5.0"
+                            fontWeight="800"
+                            fontFamily="ui-monospace, monospace"
+                          >
+                            {stn.code}
+                          </text>
+                        </g>
+                      )}
                     </g>
                   </g>
                 );
