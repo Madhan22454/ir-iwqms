@@ -17,6 +17,7 @@ import {
 } from '../data/gisFallbackData';
 import { INDIA_SVG_STATES, INDIA_SVG_VIEWBOX, geoToSvgCoords, IRI_ATLAS_STATE_COLORS } from '../data/indiaSvgData';
 import { INDIAN_RAILWAY_TRUNK_CORRIDORS } from '../data/indiaRailwayCorridors';
+import { ALL_INDIAN_RAIL_STATIONS, type NetworkStationNode } from '../data/allIndianRailStations';
 
 // Water quality status styling configuration
 const STATUS_CONFIG: Record<string, { color: string; label: string; priority: number; bg: string; border: string }> = {
@@ -89,6 +90,8 @@ export default function GISMap() {
   // UI state
   const [selectedStation, setSelectedStation] = useState<any>(null);
   const [hoveredStation, setHoveredStation] = useState<any>(null);
+  const [hoveredRegularStation, setHoveredRegularStation] = useState<NetworkStationNode | null>(null);
+  const [showAllNetworkStations, setShowAllNetworkStations] = useState(true);
   const [hoveredState, setHoveredState] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [filterStatus, setFilterStatus] = useState<string>('ALL');
@@ -241,6 +244,26 @@ export default function GISMap() {
       };
     });
   }, [stations, waterSources, divisions, zones]);
+
+  // Set of station codes that have active telemetry records in IWQMS
+  const monitoredCodes = useMemo(() => {
+    return new Set(processedStations.map(s => s.code?.toUpperCase()));
+  }, [processedStations]);
+
+  // Regular railway network stations across India without telemetry records (rendered as small black dots with names)
+  const regularNetworkStations = useMemo(() => {
+    return ALL_INDIAN_RAIL_STATIONS
+      .filter(s => !monitoredCodes.has(s.code.toUpperCase()))
+      .map(s => {
+        const { x, y } = geoToSvgCoords(s.lat, s.lng);
+        return {
+          ...s,
+          svgX: x,
+          svgY: y,
+          hasRecords: false
+        };
+      });
+  }, [monitoredCodes]);
 
   // Pre-calculate SVG points for Indian Railways Broad Gauge Trunk Corridors
   const projectedCorridors = useMemo(() => {
@@ -444,6 +467,16 @@ export default function GISMap() {
             >
               <Train className="w-3.5 h-3.5 text-indigo-400" />
               <span className="hidden lg:inline">Railway Lines</span>
+            </button>
+
+            {/* ALL NETWORK STATIONS TOGGLE BUTTON */}
+            <button
+              onClick={() => setShowAllNetworkStations(!showAllNetworkStations)}
+              title={showAllNetworkStations ? "Hide Regular Network Stations" : "Show Regular Network Stations"}
+              className={`flex items-center gap-1 px-2.5 py-1.5 rounded-lg border text-xs font-bold transition-all ${showAllNetworkStations ? 'bg-teal-600/30 text-teal-200 border-teal-500/50 shadow-sm' : 'bg-slate-800 text-slate-400 border-slate-700'}`}
+            >
+              <span className="w-2 h-2 rounded-full bg-slate-900 border border-white shrink-0"></span>
+              <span className="hidden xl:inline">All Rail Stations ({ALL_INDIAN_RAIL_STATIONS.length})</span>
             </button>
 
             {/* FULLSCREEN TOGGLE BUTTON */}
@@ -683,6 +716,17 @@ export default function GISMap() {
             viewBox={INDIA_SVG_VIEWBOX}
             className="w-full h-full drop-shadow-[0_10px_35px_rgba(2,132,199,0.2)] overflow-visible"
           >
+            <defs>
+              {/* Radiant Glow Filter for Monitored Stations with Records */}
+              <filter id="station-glow" x="-50%" y="-50%" width="200%" height="200%">
+                <feGaussianBlur in="SourceGraphic" stdDeviation="3.8" result="blur" />
+                <feMerge>
+                  <feMergeNode in="blur" />
+                  <feMergeNode in="SourceGraphic" />
+                </feMerge>
+              </filter>
+            </defs>
+
             {/* 1. RENDER ALL 36 STATES AND UNION TERRITORIES */}
             <g id="india-states-layer">
               {INDIA_SVG_STATES.map(state => {
@@ -793,8 +837,60 @@ export default function GISMap() {
               </g>
             )}
 
-            {/* 3. RENDER ALL STATION MONITORING TELEMETRY PINS */}
-            <g id="india-stations-layer">
+            {/* 3. REGULAR RAILWAY NETWORK STATIONS (Small Black Dot with Name) */}
+            {showAllNetworkStations && (
+              <g id="regular-railway-stations-layer">
+                {regularNetworkStations.map(stn => {
+                  const isHovered = hoveredRegularStation?.code === stn.code;
+
+                  return (
+                    <g
+                      key={stn.code}
+                      className="cursor-pointer transition-transform duration-100 hover:scale-125"
+                      style={{ transformOrigin: `${stn.svgX}px ${stn.svgY}px` }}
+                      onMouseEnter={() => setHoveredRegularStation(stn)}
+                      onMouseLeave={() => setHoveredRegularStation(null)}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setHoveredRegularStation(stn);
+                      }}
+                    >
+                      {/* Small Black Dot */}
+                      <circle
+                        cx={stn.svgX}
+                        cy={stn.svgY}
+                        r={isHovered ? 2.8 : 1.9}
+                        fill="#0f172a"
+                        stroke="#ffffff"
+                        strokeWidth={isHovered ? 1.0 : 0.6}
+                      />
+
+                      {/* Station Name in Cartographic Halo */}
+                      <text
+                        x={stn.svgX}
+                        y={stn.svgY - 3.6}
+                        textAnchor="middle"
+                        fill={mapTheme === 'iri' ? '#1e293b' : '#cbd5e1'}
+                        fontSize="5.2"
+                        fontWeight="700"
+                        fontFamily="system-ui, -apple-system, sans-serif"
+                        paintOrder="stroke"
+                        stroke={mapTheme === 'iri' ? '#ffffff' : '#090e17'}
+                        strokeWidth="1.8"
+                        strokeLinejoin="round"
+                        className="pointer-events-none select-none"
+                        opacity={zoom >= 1.1 ? 1 : 0.85}
+                      >
+                        {stn.name.split(' ')[0]}
+                      </text>
+                    </g>
+                  );
+                })}
+              </g>
+            )}
+
+            {/* 4. MONITORED STATIONS WITH TELEMETRY RECORDS (GLOWING) */}
+            <g id="monitored-stations-layer">
               {filteredStations.map(stn => {
                 const isSelected = selectedStation?.id === stn.id;
                 const isUrgent = stn.status === 'UNFIT' || stn.status === 'PERSISTENT_FAILURE' || stn.status === 'OVERDUE';
@@ -812,7 +908,17 @@ export default function GISMap() {
                     onMouseEnter={() => setHoveredStation(stn)}
                     onMouseLeave={() => setHoveredStation(null)}
                   >
-                    {/* Concentric Steady Alert Halo Ring for Urgent Stations (NO drifting/moving circle animation) */}
+                    {/* Glowing Aura Ring for Monitored Stations with Records */}
+                    <circle
+                      cx={stn.svgX}
+                      cy={stn.svgY}
+                      r={isSelected ? 13 : 9}
+                      fill={statusColor}
+                      fillOpacity={mapTheme === 'iri' ? 0.35 : 0.45}
+                      filter="url(#station-glow)"
+                    />
+
+                    {/* Concentric Steady Alert Halo Ring for Urgent Stations */}
                     {isUrgent && (
                       <circle
                         cx={stn.svgX}
@@ -820,47 +926,53 @@ export default function GISMap() {
                         r={isSelected ? 11 : 8.5}
                         fill="none"
                         stroke={statusColor}
-                        strokeWidth="1.2"
-                        strokeOpacity="0.7"
+                        strokeWidth="1.4"
+                        strokeOpacity="0.85"
                         strokeDasharray="2.5 2.5"
                       />
                     )}
 
-                    {/* Authentic IndiaRailInfo Station Junction Ring */}
+                    {/* Prominent Station Junction Ring */}
                     <circle
                       cx={stn.svgX}
                       cy={stn.svgY}
-                      r={isSelected ? 6.5 : (mapTheme === 'iri' ? 4.5 : 5.5)}
-                      fill={mapTheme === 'iri' ? '#ffffff' : statusColor}
-                      stroke={mapTheme === 'iri' ? statusColor : '#ffffff'}
-                      strokeWidth={isSelected ? 2.5 : 1.8}
+                      r={isSelected ? 6.5 : 4.8}
+                      fill="#ffffff"
+                      stroke={statusColor}
+                      strokeWidth={isSelected ? 2.6 : 2.0}
                       className="shadow-sm"
                     />
 
-                    {/* Inner Core Dot */}
+                    {/* Glowing Inner Telemetry Dot */}
                     <circle
                       cx={stn.svgX}
                       cy={stn.svgY}
-                      r={isSelected ? 3.0 : (mapTheme === 'iri' ? 2.0 : 2.2)}
-                      fill={mapTheme === 'iri' ? statusColor : '#ffffff'}
+                      r={isSelected ? 3.0 : 2.2}
+                      fill={statusColor}
                     />
 
-                    {/* Cartographic Halo Station Name & Code (Legible without jittery boxes) */}
-                    <g transform={`translate(${stn.svgX}, ${stn.svgY - 7})`}>
+                    {/* Station Code Badge Pill with Status Border */}
+                    <g transform={`translate(${stn.svgX}, ${stn.svgY - 7.5})`}>
+                      <rect
+                        x="-15"
+                        y="-7.5"
+                        width="30"
+                        height="11"
+                        rx="3"
+                        fill="#090e17"
+                        stroke={statusColor}
+                        strokeWidth="1.1"
+                      />
                       <text
                         x="0"
-                        y="0"
+                        y="1.2"
                         textAnchor="middle"
-                        fill={mapTheme === 'iri' ? '#0f172a' : '#ffffff'}
-                        fontSize="6.8"
+                        fill="#f8fafc"
+                        fontSize="6.6"
                         fontWeight="800"
-                        fontFamily="system-ui, -apple-system, sans-serif"
-                        paintOrder="stroke"
-                        stroke={mapTheme === 'iri' ? '#ffffff' : '#090e17'}
-                        strokeWidth="2.5"
-                        strokeLinejoin="round"
+                        fontFamily="ui-monospace, monospace"
                       >
-                        {stn.name.split(' ')[0]} {stn.code}
+                        {stn.code}
                       </text>
                     </g>
                   </g>
@@ -905,7 +1017,29 @@ export default function GISMap() {
               <span className="font-bold text-white">{hoveredStation.sources?.length || 0}</span>
             </div>
             <div className="text-[10px] text-blue-400 font-semibold mt-1">
-              Click station to view detailed laboratory telemetry →
+              Click station to view detailed laboratory telemetry &rarr;
+            </div>
+          </div>
+        )}
+
+        {/* REGULAR STATION MINI TOOLTIP CARD */}
+        {hoveredRegularStation && hoveredRegularStation.svgX != null && hoveredRegularStation.svgY != null && !hoveredStation && !selectedStation && (
+          <div 
+            className="absolute z-20 pointer-events-none bg-slate-900/95 backdrop-blur-md border border-slate-700/80 rounded-xl px-3 py-2 shadow-2xl text-xs animate-in fade-in duration-100"
+            style={{
+              left: Math.min(Math.max(hoveredRegularStation.svgX * zoom + pan.x + (containerRef.current?.clientWidth || 0) / 2 - 306 * zoom + 15, 20), (containerRef.current?.clientWidth || 600) - 220),
+              top: Math.min(Math.max(hoveredRegularStation.svgY * zoom + pan.y + (containerRef.current?.clientHeight || 0) / 2 - 348 * zoom - 45, 20), (containerRef.current?.clientHeight || 600) - 80)
+            }}
+          >
+            <div className="flex items-center gap-2">
+              <span className="w-2 h-2 rounded-full bg-slate-400"></span>
+              <span className="font-bold text-white text-xs">{hoveredRegularStation.name}</span>
+              <span className="font-mono text-[10px] text-sky-400 font-bold bg-slate-800 px-1.5 py-0.2 rounded border border-slate-700">
+                {hoveredRegularStation.code}
+              </span>
+            </div>
+            <div className="text-[10px] text-slate-400 mt-0.5">
+              Indian Railways Network Station &bull; Standard Track Junction
             </div>
           </div>
         )}
