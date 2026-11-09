@@ -125,16 +125,20 @@ export default function LabResultEntry() {
   const rc = result ? RESULT_CONFIG[result.overall_result] : null;
 
   return (
-    <div className="min-h-screen p-6" style={{ background: 'linear-gradient(135deg,#0f172a 0%,#1e1b4b 100%)' }}>
+    <div className="ir-page">
       {/* Header */}
-      <div className="max-w-5xl mx-auto">
-        <div className="flex items-center gap-4 mb-8">
-          <div className="p-3 rounded-xl bg-indigo-600/20 border border-indigo-500/30">
-            <FlaskConical className="w-7 h-7 text-indigo-400" />
+      <div className="ir-container space-y-6">
+        <div className="ir-header-card flex items-center gap-4">
+          <div className="p-3 rounded-xl bg-indigo-500/15 border border-indigo-500/30">
+            <FlaskConical className="w-7 h-7 text-indigo-500" />
           </div>
           <div>
-            <h1 className="text-2xl font-bold text-white">Laboratory Result Entry</h1>
-            <p className="text-blue-300 text-sm">Submit water sample test results — automatic evaluation & alert generation</p>
+            <h1 className="text-2xl font-black tracking-tight" style={{ color: 'var(--text-primary)' }}>
+              Laboratory Result Entry
+            </h1>
+            <p className="text-sm font-medium mt-0.5" style={{ color: 'var(--text-secondary)' }}>
+              Submit water sample test results — automated IS 10500 compliance evaluation & instant incident dispatch
+            </p>
           </div>
         </div>
 

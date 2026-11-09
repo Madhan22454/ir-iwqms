@@ -156,37 +156,27 @@ export default function Escalations() {
   }, [alerts]);
 
   return (
-    <div style={{ height: '100%', overflowY: 'auto', background: '#f8fafc', padding: '24px 28px' }}>
-      <div style={{ maxWidth: 1400, margin: '0 auto', display: 'flex', flexDirection: 'column', gap: 20 }}>
+    <div className="ir-page">
+      <div className="ir-container">
         
         {/* Header */}
-        <div style={{
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-          flexWrap: 'wrap',
-          gap: 16,
-          background: '#ffffff',
-          padding: '20px 24px',
-          borderRadius: 12,
-          border: '1px solid #e2e8f0',
-          boxShadow: '0 1px 3px rgba(0,0,0,0.04)'
-        }}>
+        <div className="ir-header-card">
           <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
             <div style={{
-              background: 'linear-gradient(135deg, #b91c1c, #dc2626)',
+              background: 'linear-gradient(135deg, #1e40af, #3b82f6)',
               padding: 12,
               borderRadius: 12,
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              boxShadow: '0 4px 10px rgba(185,28,28,0.25)'
+              boxShadow: '0 4px 12px rgba(37,99,235,0.3)',
+              flexShrink: 0
             }}>
               <Flame size={24} color="#ffffff" />
             </div>
             <div>
               <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                <h1 style={{ fontSize: 22, fontWeight: 800, color: '#0f172a', margin: 0 }}>
+                <h1 style={{ fontSize: 22, fontWeight: 800, color: 'var(--text-primary)', margin: 0 }}>
                   Water Quality Escalation Control
                 </h1>
                 <span style={{
@@ -194,14 +184,14 @@ export default function Escalations() {
                   fontWeight: 700,
                   padding: '2px 8px',
                   borderRadius: 12,
-                  background: '#fef2f2',
-                  color: '#dc2626',
-                  border: '1px solid #fecaca'
+                  background: 'rgba(239,68,68,0.15)',
+                  color: '#ef4444',
+                  border: '1px solid rgba(239,68,68,0.3)'
                 }}>
                   {counts.total} Escalated Incidents
                 </span>
               </div>
-              <p style={{ fontSize: 13, color: '#64748b', margin: '4px 0 0 0' }}>
+              <p style={{ fontSize: 13, color: 'var(--text-secondary)', margin: '4px 0 0 0' }}>
                 Multi-tier escalation hierarchy: Divisional DRM → Zonal GM/PCMD → Railway Board (Ministry of Railways)
               </p>
             </div>
@@ -211,19 +201,7 @@ export default function Escalations() {
             <button
               onClick={fetchData}
               disabled={loading}
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: 6,
-                padding: '9px 14px',
-                background: '#ffffff',
-                border: '1px solid #cbd5e1',
-                borderRadius: 8,
-                fontSize: 13,
-                fontWeight: 600,
-                color: '#334155',
-                cursor: loading ? 'not-allowed' : 'pointer'
-              }}
+              className="ir-btn-secondary"
             >
               <RefreshCw size={15} className={loading ? 'animate-spin' : ''} />
               Refresh
@@ -232,7 +210,7 @@ export default function Escalations() {
         </div>
 
         {error && (
-          <div style={{ background: '#fef2f2', border: '1px solid #fecaca', borderRadius: 8, padding: '12px 16px', color: '#991b1b', fontSize: 13, display: 'flex', alignItems: 'center', gap: 8 }}>
+          <div style={{ background: 'rgba(239,68,68,0.15)', border: '1px solid rgba(239,68,68,0.3)', borderRadius: 10, padding: '12px 16px', color: '#f87171', fontSize: 13, display: 'flex', alignItems: 'center', gap: 8 }}>
             <AlertCircle size={16} />
             {error}
           </div>
@@ -241,15 +219,15 @@ export default function Escalations() {
         {actionMessage && (
           <div style={{
             padding: '12px 16px',
-            borderRadius: 8,
+            borderRadius: 10,
             fontSize: 13,
             fontWeight: 600,
             display: 'flex',
             alignItems: 'center',
             gap: 8,
-            background: actionMessage.type === 'success' ? '#f0fdf4' : '#fef2f2',
-            color: actionMessage.type === 'success' ? '#166534' : '#991b1b',
-            border: `1px solid ${actionMessage.type === 'success' ? '#bbf7d0' : '#fecaca'}`
+            background: actionMessage.type === 'success' ? 'rgba(16,185,129,0.15)' : 'rgba(239,68,68,0.15)',
+            color: actionMessage.type === 'success' ? '#10b981' : '#ef4444',
+            border: `1px solid ${actionMessage.type === 'success' ? 'rgba(16,185,129,0.3)' : 'rgba(239,68,68,0.3)'}`
           }}>
             {actionMessage.type === 'success' ? <CheckCircle size={16} /> : <AlertCircle size={16} />}
             {actionMessage.text}
@@ -257,68 +235,81 @@ export default function Escalations() {
         )}
 
         {/* Level Counter Cards */}
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 16 }}>
-          <div style={{ background: '#ffffff', padding: 20, borderRadius: 12, border: '1px solid #e2e8f0', boxShadow: '0 1px 3px rgba(0,0,0,0.02)' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <span style={{ fontSize: 13, color: '#64748b', fontWeight: 600 }}>Total Escalated</span>
-              <ShieldAlert size={18} color="#b91c1c" />
+        <div className="ir-stat-grid">
+          <div className="ir-stat-card">
+            <div>
+              <span style={{ fontSize: 12, color: 'var(--text-secondary)', fontWeight: 600 }}>Total Escalated</span>
+              <div style={{ fontSize: 26, fontWeight: 800, color: 'var(--text-primary)', marginTop: 4 }}>
+                {counts.total}
+              </div>
+              <div style={{ fontSize: 11, color: '#ef4444', marginTop: 2, fontWeight: 600 }}>
+                Active escalated alerts
+              </div>
             </div>
-            <div style={{ fontSize: 28, fontWeight: 800, color: '#0f172a', marginTop: 8 }}>
-              {counts.total}
-            </div>
-            <div style={{ fontSize: 12, color: '#dc2626', marginTop: 4, fontWeight: 600 }}>
-              Active escalated alerts
-            </div>
-          </div>
-
-          <div style={{ background: '#ffffff', padding: 20, borderRadius: 12, border: '1px solid #e2e8f0', boxShadow: '0 1px 3px rgba(0,0,0,0.02)' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <span style={{ fontSize: 13, color: '#64748b', fontWeight: 600 }}>Level 1: Division</span>
-              <span style={{ fontSize: 10, fontWeight: 800, background: '#fef3c7', color: '#b45309', padding: '2px 6px', borderRadius: 4 }}>48h</span>
-            </div>
-            <div style={{ fontSize: 28, fontWeight: 800, color: '#b45309', marginTop: 8 }}>
-              {counts.l1}
-            </div>
-            <div style={{ fontSize: 12, color: '#64748b', marginTop: 4 }}>
-              Sr. DEN / CMS / DRM
+            <div style={{ background: 'rgba(239,68,68,0.15)', padding: 10, borderRadius: 10 }}>
+              <ShieldAlert size={20} color="#ef4444" />
             </div>
           </div>
 
-          <div style={{ background: '#ffffff', padding: 20, borderRadius: 12, border: '1px solid #e2e8f0', boxShadow: '0 1px 3px rgba(0,0,0,0.02)' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <span style={{ fontSize: 13, color: '#64748b', fontWeight: 600 }}>Level 2: Zonal HQ</span>
-              <span style={{ fontSize: 10, fontWeight: 800, background: '#ffedd5', color: '#c2410c', padding: '2px 6px', borderRadius: 4 }}>96h</span>
+          <div className="ir-stat-card">
+            <div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                <span style={{ fontSize: 12, color: 'var(--text-secondary)', fontWeight: 600 }}>Level 1: Division</span>
+                <span style={{ fontSize: 9.5, fontWeight: 800, background: 'rgba(245,158,11,0.2)', color: '#f59e0b', padding: '1px 5px', borderRadius: 4 }}>48h</span>
+              </div>
+              <div style={{ fontSize: 26, fontWeight: 800, color: '#f59e0b', marginTop: 4 }}>
+                {counts.l1}
+              </div>
+              <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 2 }}>
+                Sr. DEN / CMS / DRM
+              </div>
             </div>
-            <div style={{ fontSize: 28, fontWeight: 800, color: '#c2410c', marginTop: 8 }}>
-              {counts.l2}
-            </div>
-            <div style={{ fontSize: 12, color: '#64748b', marginTop: 4 }}>
-              PCE / PCMD / GM
+            <div style={{ background: 'rgba(245,158,11,0.15)', padding: 10, borderRadius: 10 }}>
+              <Flame size={20} color="#f59e0b" />
             </div>
           </div>
 
-          <div style={{ background: '#ffffff', padding: 20, borderRadius: 12, border: '1px solid #e2e8f0', boxShadow: '0 1px 3px rgba(0,0,0,0.02)' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <span style={{ fontSize: 13, color: '#64748b', fontWeight: 600 }}>Level 3: Central Board</span>
-              <span style={{ fontSize: 10, fontWeight: 800, background: '#fee2e2', color: '#991b1b', padding: '2px 6px', borderRadius: 4 }}>144h</span>
+          <div className="ir-stat-card">
+            <div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                <span style={{ fontSize: 12, color: 'var(--text-secondary)', fontWeight: 600 }}>Level 2: Zonal HQ</span>
+                <span style={{ fontSize: 9.5, fontWeight: 800, background: 'rgba(249,115,22,0.2)', color: '#f97316', padding: '1px 5px', borderRadius: 4 }}>96h</span>
+              </div>
+              <div style={{ fontSize: 26, fontWeight: 800, color: '#f97316', marginTop: 4 }}>
+                {counts.l2}
+              </div>
+              <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 2 }}>
+                PCE / PCMD / GM
+              </div>
             </div>
-            <div style={{ fontSize: 28, fontWeight: 800, color: '#991b1b', marginTop: 8 }}>
-              {counts.l3}
+            <div style={{ background: 'rgba(249,115,22,0.15)', padding: 10, borderRadius: 10 }}>
+              <Flame size={20} color="#f97316" />
             </div>
-            <div style={{ fontSize: 12, color: '#64748b', marginTop: 4 }}>
-              Executive Director / Member (Infra)
+          </div>
+
+          <div className="ir-stat-card">
+            <div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                <span style={{ fontSize: 12, color: 'var(--text-secondary)', fontWeight: 600 }}>Level 3: Central Board</span>
+                <span style={{ fontSize: 9.5, fontWeight: 800, background: 'rgba(239,68,68,0.2)', color: '#ef4444', padding: '1px 5px', borderRadius: 4 }}>144h</span>
+              </div>
+              <div style={{ fontSize: 26, fontWeight: 800, color: '#ef4444', marginTop: 4 }}>
+                {counts.l3}
+              </div>
+              <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 2 }}>
+                Executive Director / Member (Infra)
+              </div>
+            </div>
+            <div style={{ background: 'rgba(239,68,68,0.15)', padding: 10, borderRadius: 10 }}>
+              <ShieldAlert size={20} color="#ef4444" />
             </div>
           </div>
         </div>
 
         {/* Tab switch */}
-        <div style={{
+        <div className="ir-card" style={{
           display: 'flex',
-          borderBottom: '1px solid #e2e8f0',
-          background: '#ffffff',
-          borderRadius: 10,
           padding: 4,
-          boxShadow: '0 1px 3px rgba(0,0,0,0.02)',
           gap: 6
         }}>
           <button
@@ -330,8 +321,8 @@ export default function Escalations() {
               padding: '9px 18px',
               borderRadius: 8,
               border: 'none',
-              background: activeTab === 'escalations' ? '#1e3a8a' : 'transparent',
-              color: activeTab === 'escalations' ? '#ffffff' : '#475569',
+              background: activeTab === 'escalations' ? 'linear-gradient(135deg, #1d4ed8, #2563eb)' : 'transparent',
+              color: activeTab === 'escalations' ? '#ffffff' : 'var(--text-secondary)',
               fontSize: 13,
               fontWeight: activeTab === 'escalations' ? 700 : 500,
               cursor: 'pointer'
@@ -350,8 +341,8 @@ export default function Escalations() {
               padding: '9px 18px',
               borderRadius: 8,
               border: 'none',
-              background: activeTab === 'rules' ? '#1e3a8a' : 'transparent',
-              color: activeTab === 'rules' ? '#ffffff' : '#475569',
+              background: activeTab === 'rules' ? 'linear-gradient(135deg, #1d4ed8, #2563eb)' : 'transparent',
+              color: activeTab === 'rules' ? '#ffffff' : 'var(--text-secondary)',
               fontSize: 13,
               fontWeight: activeTab === 'rules' ? 700 : 500,
               cursor: 'pointer'
@@ -364,53 +355,53 @@ export default function Escalations() {
 
         {activeTab === 'rules' ? (
           /* Escalation Rules View */
-          <div style={{ background: '#ffffff', borderRadius: 12, border: '1px solid #e2e8f0', overflow: 'hidden' }}>
-            <div style={{ padding: '16px 20px', borderBottom: '1px solid #e2e8f0', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <div className="ir-card overflow-hidden">
+            <div style={{ padding: '16px 20px', borderBottom: '1px solid var(--border-color)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <div>
-                <h3 style={{ fontSize: 15, fontWeight: 800, color: '#0f172a', margin: 0 }}>
+                <h3 style={{ fontSize: 15, fontWeight: 800, color: 'var(--text-primary)', margin: 0 }}>
                   Railway Automatic Escalation Timers & Protocol Matrix
                 </h3>
-                <p style={{ fontSize: 12, color: '#64748b', margin: '2px 0 0 0' }}>
+                <p style={{ fontSize: 12, color: 'var(--text-secondary)', margin: '2px 0 0 0' }}>
                   If water quality incidents or corrective action milestones remain unresolved, alerts escalate automatically.
                 </p>
               </div>
             </div>
 
             <div style={{ overflowX: 'auto' }}>
-              <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: 13 }}>
+              <table className="ir-table">
                 <thead>
-                  <tr style={{ background: '#f8fafc', borderBottom: '1px solid #e2e8f0' }}>
-                    <th style={{ padding: '12px 16px', fontWeight: 700, color: '#475569' }}>Rule Name</th>
-                    <th style={{ padding: '12px 16px', fontWeight: 700, color: '#475569' }}>Alert Category</th>
-                    <th style={{ padding: '12px 16px', fontWeight: 700, color: '#475569' }}>Trigger Severity</th>
-                    <th style={{ padding: '12px 16px', fontWeight: 700, color: '#475569' }}>Escalation Level</th>
-                    <th style={{ padding: '12px 16px', fontWeight: 700, color: '#475569' }}>Delay Window</th>
-                    <th style={{ padding: '12px 16px', fontWeight: 700, color: '#475569' }}>Escalate To Role</th>
-                    <th style={{ padding: '12px 16px', fontWeight: 700, color: '#475569' }}>Status</th>
+                  <tr>
+                    <th>Rule Name</th>
+                    <th>Alert Category</th>
+                    <th>Trigger Severity</th>
+                    <th>Escalation Level</th>
+                    <th>Delay Window</th>
+                    <th>Escalate To Role</th>
+                    <th>Status</th>
                   </tr>
                 </thead>
                 <tbody>
                   {rules.length === 0 ? (
                     <tr>
-                      <td colSpan={7} style={{ padding: 40, textAlign: 'center', color: '#64748b' }}>
+                      <td colSpan={7} style={{ padding: 40, textAlign: 'center', color: 'var(--text-muted)' }}>
                         No escalation rules configured.
                       </td>
                     </tr>
                   ) : (
                     rules.map(rule => (
-                      <tr key={rule.id} style={{ borderBottom: '1px solid #f1f5f9' }}>
-                        <td style={{ padding: '12px 16px', fontWeight: 700, color: '#0f172a' }}>{rule.name}</td>
-                        <td style={{ padding: '12px 16px', color: '#64748b' }}>{rule.alert_type}</td>
-                        <td style={{ padding: '12px 16px' }}>
-                          <span style={{ fontSize: 11, fontWeight: 700, padding: '2px 7px', borderRadius: 4, background: '#fef2f2', color: '#dc2626' }}>
+                      <tr key={rule.id}>
+                        <td style={{ fontWeight: 700 }}>{rule.name}</td>
+                        <td style={{ color: 'var(--text-secondary)' }}>{rule.alert_type}</td>
+                        <td>
+                          <span style={{ fontSize: 11, fontWeight: 700, padding: '2px 7px', borderRadius: 4, background: 'rgba(239,68,68,0.15)', color: '#ef4444' }}>
                             {rule.severity || 'CRITICAL'}
                           </span>
                         </td>
-                        <td style={{ padding: '12px 16px', fontWeight: 600 }}>Level {rule.level}</td>
-                        <td style={{ padding: '12px 16px', fontWeight: 700, color: '#0f172a' }}>{rule.delay_hours} Hours</td>
-                        <td style={{ padding: '12px 16px', color: '#1e3a8a', fontWeight: 600 }}>{rule.escalate_to_role || 'ADMIN'}</td>
-                        <td style={{ padding: '12px 16px' }}>
-                          <span style={{ fontSize: 11, fontWeight: 700, padding: '2px 7px', borderRadius: 4, background: rule.is_active ? '#f0fdf4' : '#f1f5f9', color: rule.is_active ? '#16a34a' : '#64748b' }}>
+                        <td style={{ fontWeight: 600 }}>Level {rule.level}</td>
+                        <td style={{ fontWeight: 700 }}>{rule.delay_hours} Hours</td>
+                        <td style={{ color: '#38bdf8', fontWeight: 600 }}>{rule.escalate_to_role || 'ADMIN'}</td>
+                        <td>
+                          <span style={{ fontSize: 11, fontWeight: 700, padding: '2px 7px', borderRadius: 4, background: rule.is_active ? 'rgba(16,185,129,0.15)' : 'var(--border-subtle)', color: rule.is_active ? '#10b981' : 'var(--text-muted)' }}>
                             {rule.is_active ? 'ACTIVE' : 'DISABLED'}
                           </span>
                         </td>
@@ -425,39 +416,28 @@ export default function Escalations() {
           /* Escalated Alerts Queue */
           <>
             {/* Filters */}
-            <div style={{
-              background: '#ffffff',
+            <div className="ir-card" style={{
               padding: '14px 18px',
-              borderRadius: 12,
-              border: '1px solid #e2e8f0',
               display: 'grid',
               gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
               gap: 12
             }}>
               <div style={{ position: 'relative' }}>
-                <Search size={16} color="#94a3b8" style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)' }} />
+                <Search size={16} color="var(--text-muted)" style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)' }} />
                 <input
                   type="text"
                   placeholder="Search alert ID, source, or station..."
                   value={searchTerm}
                   onChange={e => setSearchTerm(e.target.value)}
-                  style={{
-                    width: '100%',
-                    padding: '8px 12px 8px 36px',
-                    border: '1px solid #cbd5e1',
-                    borderRadius: 8,
-                    fontSize: 13,
-                    outline: 'none',
-                    background: '#f8fafc',
-                    color: '#0f172a'
-                  }}
+                  className="ir-input"
+                  style={{ width: '100%', paddingLeft: 36 }}
                 />
               </div>
 
               <select
                 value={selectedLevel}
                 onChange={e => setSelectedLevel(e.target.value)}
-                style={{ padding: '8px 12px', border: '1px solid #cbd5e1', borderRadius: 8, fontSize: 13, background: '#f8fafc' }}
+                className="ir-input"
               >
                 <option value="ALL">All Escalation Levels</option>
                 <option value="1">Level 1: Division (DRM)</option>
@@ -468,7 +448,7 @@ export default function Escalations() {
               <select
                 value={selectedSeverity}
                 onChange={e => setSelectedSeverity(e.target.value)}
-                style={{ padding: '8px 12px', border: '1px solid #cbd5e1', borderRadius: 8, fontSize: 13, background: '#f8fafc' }}
+                className="ir-input"
               >
                 <option value="ALL">All Severities</option>
                 <option value="CRITICAL">CRITICAL</option>
@@ -478,25 +458,25 @@ export default function Escalations() {
             </div>
 
             {/* Table */}
-            <div style={{ background: '#ffffff', borderRadius: 12, border: '1px solid #e2e8f0', overflow: 'hidden', boxShadow: '0 1px 3px rgba(0,0,0,0.02)' }}>
+            <div className="ir-card overflow-hidden">
               <div style={{ overflowX: 'auto' }}>
-                <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: 13 }}>
+                <table className="ir-table">
                   <thead>
-                    <tr style={{ background: '#f8fafc', borderBottom: '1px solid #e2e8f0' }}>
-                      <th style={{ padding: '12px 16px', fontWeight: 700, color: '#475569', fontSize: 12, textTransform: 'uppercase' }}>Alert ID</th>
-                      <th style={{ padding: '12px 16px', fontWeight: 700, color: '#475569', fontSize: 12, textTransform: 'uppercase' }}>Current Escalation Level</th>
-                      <th style={{ padding: '12px 16px', fontWeight: 700, color: '#475569', fontSize: 12, textTransform: 'uppercase' }}>Station / Zone</th>
-                      <th style={{ padding: '12px 16px', fontWeight: 700, color: '#475569', fontSize: 12, textTransform: 'uppercase' }}>Source ID</th>
-                      <th style={{ padding: '12px 16px', fontWeight: 700, color: '#475569', fontSize: 12, textTransform: 'uppercase' }}>Sample Result</th>
-                      <th style={{ padding: '12px 16px', fontWeight: 700, color: '#475569', fontSize: 12, textTransform: 'uppercase' }}>Severity</th>
-                      <th style={{ padding: '12px 16px', fontWeight: 700, color: '#475569', fontSize: 12, textTransform: 'uppercase' }}>Escalated Date</th>
-                      <th style={{ padding: '12px 16px', fontWeight: 700, color: '#475569', fontSize: 12, textTransform: 'uppercase', textAlign: 'right' }}>Actions</th>
+                    <tr>
+                      <th>Alert ID</th>
+                      <th>Current Escalation Level</th>
+                      <th>Station / Zone</th>
+                      <th>Source ID</th>
+                      <th>Sample Result</th>
+                      <th>Severity</th>
+                      <th>Escalated Date</th>
+                      <th style={{ textAlign: 'right' }}>Actions</th>
                     </tr>
                   </thead>
                   <tbody>
                     {filteredAlerts.length === 0 ? (
                       <tr>
-                        <td colSpan={8} style={{ padding: 40, textAlign: 'center', color: '#64748b' }}>
+                        <td colSpan={8} style={{ padding: 40, textAlign: 'center', color: 'var(--text-muted)' }}>
                           No escalated alerts found.
                         </td>
                       </tr>
@@ -505,14 +485,14 @@ export default function Escalations() {
                         const lvlBadge = getLevelBadge(a.escalation_level);
                         const isActionLoading = actionLoadingId === a.id;
                         return (
-                          <tr key={a.id} style={{ borderBottom: '1px solid #f1f5f9' }}>
-                            <td style={{ padding: '12px 16px' }}>
+                          <tr key={a.id}>
+                            <td>
                               <Link
                                 to={`/alerts/${a.id}`}
                                 style={{
                                   fontFamily: 'monospace',
                                   fontWeight: 800,
-                                  color: '#dc2626',
+                                  color: '#ef4444',
                                   textDecoration: 'none',
                                   display: 'inline-flex',
                                   alignItems: 'center',

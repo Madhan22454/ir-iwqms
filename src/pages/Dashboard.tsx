@@ -18,6 +18,7 @@ import {
   ShieldAlert,
   Layers
 } from 'lucide-react';
+import { useTheme } from '../context/ThemeContext';
 import { API_URL } from '../config/api';
 import { FALLBACK_STATIONS } from '../data/gisFallbackData';
 import { INDIA_SVG_STATES, INDIA_SVG_VIEWBOX, geoToSvgCoords, IRI_ATLAS_STATE_COLORS } from '../data/indiaSvgData';
@@ -148,6 +149,7 @@ interface DashboardSummaryData {
 
 export function Dashboard() {
   const navigate = useNavigate();
+  const { isDark } = useTheme();
   const [hoveredStation, setHoveredStation] = useState<any>(null);
 
   const [summary, setSummary] = useState<DashboardSummaryData | null>(null);
@@ -186,8 +188,8 @@ export function Dashboard() {
   }, []);
 
   return (
-    <div style={{ height: '100%', overflowY: 'auto', background: '#f8fafc', padding: '24px 28px' }}>
-      <div style={{ maxWidth: 1400, margin: '0 auto', display: 'flex', flexDirection: 'column', gap: 20 }}>
+    <div className="ir-page">
+      <div className="ir-container space-y-6">
         
         {/* Top Control Centre Banner & Quick Actions */}
         <div style={{
@@ -362,45 +364,31 @@ export function Dashboard() {
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: 16 }}>
           <div
             onClick={() => navigate('/master-data')}
-            style={{
-              background: '#ffffff',
-              padding: '20px 22px',
-              borderRadius: 12,
-              border: '1px solid #e2e8f0',
-              cursor: 'pointer',
-              boxShadow: '0 1px 3px rgba(0,0,0,0.02)',
-              transition: 'transform 0.15s ease'
-            }}
+            className="ir-stat-card"
+            style={{ cursor: 'pointer', transition: 'transform 0.15s ease' }}
           >
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <span style={{ fontSize: 13, color: '#64748b', fontWeight: 600 }}>Total Railway Zones</span>
-              <Layers size={18} color="#1e3a8a" />
+              <span style={{ fontSize: 13, color: 'var(--text-muted)', fontWeight: 600 }}>Total Railway Zones</span>
+              <Layers size={18} color="#0284c7" />
             </div>
-            <div style={{ fontSize: 30, fontWeight: 900, color: '#0f172a', marginTop: 8 }}>
+            <div style={{ fontSize: 30, fontWeight: 900, color: 'var(--text-primary)', marginTop: 8 }}>
               {summary?.infrastructure?.zones ?? 0}
             </div>
-            <div style={{ fontSize: 12, color: '#1e3a8a', marginTop: 4, fontWeight: 600 }}>
+            <div style={{ fontSize: 12, color: '#0284c7', marginTop: 4, fontWeight: 600 }}>
               Zonal administrative networks
             </div>
           </div>
 
           <div
             onClick={() => navigate('/master-data')}
-            style={{
-              background: '#ffffff',
-              padding: '20px 22px',
-              borderRadius: 12,
-              border: '1px solid #e2e8f0',
-              cursor: 'pointer',
-              boxShadow: '0 1px 3px rgba(0,0,0,0.02)',
-              transition: 'transform 0.15s ease'
-            }}
+            className="ir-stat-card"
+            style={{ cursor: 'pointer', transition: 'transform 0.15s ease' }}
           >
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <span style={{ fontSize: 13, color: '#64748b', fontWeight: 600 }}>Total Divisions</span>
+              <span style={{ fontSize: 13, color: 'var(--text-muted)', fontWeight: 600 }}>Total Divisions</span>
               <Train size={18} color="#2563eb" />
             </div>
-            <div style={{ fontSize: 30, fontWeight: 900, color: '#0f172a', marginTop: 8 }}>
+            <div style={{ fontSize: 30, fontWeight: 900, color: 'var(--text-primary)', marginTop: 8 }}>
               {summary?.infrastructure?.divisions ?? 0}
             </div>
             <div style={{ fontSize: 12, color: '#2563eb', marginTop: 4, fontWeight: 600 }}>
@@ -410,21 +398,14 @@ export function Dashboard() {
 
           <div
             onClick={() => navigate('/stations')}
-            style={{
-              background: '#ffffff',
-              padding: '20px 22px',
-              borderRadius: 12,
-              border: '1px solid #e2e8f0',
-              cursor: 'pointer',
-              boxShadow: '0 1px 3px rgba(0,0,0,0.02)',
-              transition: 'transform 0.15s ease'
-            }}
+            className="ir-stat-card"
+            style={{ cursor: 'pointer', transition: 'transform 0.15s ease' }}
           >
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <span style={{ fontSize: 13, color: '#64748b', fontWeight: 600 }}>Monitored Stations</span>
+              <span style={{ fontSize: 13, color: 'var(--text-muted)', fontWeight: 600 }}>Monitored Stations</span>
               <MapPin size={18} color="#0d9488" />
             </div>
-            <div style={{ fontSize: 30, fontWeight: 900, color: '#0f172a', marginTop: 8 }}>
+            <div style={{ fontSize: 30, fontWeight: 900, color: 'var(--text-primary)', marginTop: 8 }}>
               {summary?.infrastructure?.stations ?? 0}
             </div>
             <div style={{ fontSize: 12, color: '#0d9488', marginTop: 4, fontWeight: 600 }}>
@@ -434,21 +415,14 @@ export function Dashboard() {
 
           <div
             onClick={() => navigate('/water-sources')}
-            style={{
-              background: '#ffffff',
-              padding: '20px 22px',
-              borderRadius: 12,
-              border: '1px solid #e2e8f0',
-              cursor: 'pointer',
-              boxShadow: '0 1px 3px rgba(0,0,0,0.02)',
-              transition: 'transform 0.15s ease'
-            }}
+            className="ir-stat-card"
+            style={{ cursor: 'pointer', transition: 'transform 0.15s ease' }}
           >
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <span style={{ fontSize: 13, color: '#64748b', fontWeight: 600 }}>Total Water Sources</span>
+              <span style={{ fontSize: 13, color: 'var(--text-muted)', fontWeight: 600 }}>Total Water Sources</span>
               <Droplets size={18} color="#0284c7" />
             </div>
-            <div style={{ fontSize: 30, fontWeight: 900, color: '#0f172a', marginTop: 8 }}>
+            <div style={{ fontSize: 30, fontWeight: 900, color: 'var(--text-primary)', marginTop: 8 }}>
               {summary?.infrastructure?.water_sources ?? 0}
             </div>
             <div style={{ fontSize: 12, color: '#0284c7', marginTop: 4, fontWeight: 600 }}>
@@ -461,60 +435,60 @@ export function Dashboard() {
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(480px, 1fr))', gap: 20 }}>
           
           {/* Water Quality Status Breakdown */}
-          <div style={{ background: '#ffffff', borderRadius: 12, border: '1px solid #e2e8f0', padding: 22, boxShadow: '0 1px 3px rgba(0,0,0,0.02)' }}>
+          <div className="ir-card" style={{ padding: 22 }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
               <div>
-                <h3 style={{ fontSize: 15, fontWeight: 800, color: '#0f172a', margin: 0 }}>
+                <h3 style={{ fontSize: 15, fontWeight: 800, color: 'var(--text-primary)', margin: 0 }}>
                   Water Quality Status Breakdown
                 </h3>
-                <p style={{ fontSize: 12, color: '#64748b', margin: '2px 0 0 0' }}>
+                <p style={{ fontSize: 12, color: 'var(--text-muted)', margin: '2px 0 0 0' }}>
                   Live surveillance status of all railway water sources
                 </p>
               </div>
-              <Link to="/water-sources" style={{ fontSize: 12, fontWeight: 700, color: '#2563eb', textDecoration: 'none', display: 'flex', alignItems: 'center', gap: 2 }}>
+              <Link to="/water-sources" style={{ fontSize: 12, fontWeight: 700, color: '#0284c7', textDecoration: 'none', display: 'flex', alignItems: 'center', gap: 2 }}>
                 Full List <ChevronRight size={13} />
               </Link>
             </div>
 
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 12 }}>
-              <div style={{ background: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: 10, padding: 14 }}>
-                <span style={{ fontSize: 11, fontWeight: 800, color: '#16a34a', textTransform: 'uppercase' }}>COMPLIANT</span>
-                <div style={{ fontSize: 24, fontWeight: 900, color: '#166534', marginTop: 4 }}>
+              <div style={{ background: 'rgba(16, 185, 129, 0.1)', border: '1px solid rgba(16, 185, 129, 0.3)', borderRadius: 10, padding: 14 }}>
+                <span style={{ fontSize: 11, fontWeight: 800, color: '#10b981', textTransform: 'uppercase' }}>COMPLIANT</span>
+                <div style={{ fontSize: 24, fontWeight: 900, color: '#10b981', marginTop: 4 }}>
                   {summary?.water_quality?.compliant ?? 0}
                 </div>
               </div>
 
-              <div style={{ background: '#fffbeb', border: '1px solid #fde68a', borderRadius: 10, padding: 14 }}>
-                <span style={{ fontSize: 11, fontWeight: 800, color: '#d97706', textTransform: 'uppercase' }}>DUE</span>
-                <div style={{ fontSize: 24, fontWeight: 900, color: '#92400e', marginTop: 4 }}>
+              <div style={{ background: 'rgba(234, 179, 8, 0.1)', border: '1px solid rgba(234, 179, 8, 0.3)', borderRadius: 10, padding: 14 }}>
+                <span style={{ fontSize: 11, fontWeight: 800, color: '#eab308', textTransform: 'uppercase' }}>DUE</span>
+                <div style={{ fontSize: 24, fontWeight: 900, color: '#eab308', marginTop: 4 }}>
                   {summary?.water_quality?.due ?? 0}
                 </div>
               </div>
 
-              <div style={{ background: '#fff7ed', border: '1px solid #fdba74', borderRadius: 10, padding: 14 }}>
-                <span style={{ fontSize: 11, fontWeight: 800, color: '#ea580c', textTransform: 'uppercase' }}>OVERDUE</span>
-                <div style={{ fontSize: 24, fontWeight: 900, color: '#9a3412', marginTop: 4 }}>
+              <div style={{ background: 'rgba(249, 115, 22, 0.1)', border: '1px solid rgba(249, 115, 22, 0.3)', borderRadius: 10, padding: 14 }}>
+                <span style={{ fontSize: 11, fontWeight: 800, color: '#f97316', textTransform: 'uppercase' }}>OVERDUE</span>
+                <div style={{ fontSize: 24, fontWeight: 900, color: '#f97316', marginTop: 4 }}>
                   {summary?.water_quality?.overdue ?? 0}
                 </div>
               </div>
 
-              <div style={{ background: '#fef2f2', border: '1px solid #fecaca', borderRadius: 10, padding: 14 }}>
-                <span style={{ fontSize: 11, fontWeight: 800, color: '#dc2626', textTransform: 'uppercase' }}>UNFIT</span>
-                <div style={{ fontSize: 24, fontWeight: 900, color: '#991b1b', marginTop: 4 }}>
+              <div style={{ background: 'rgba(239, 68, 68, 0.1)', border: '1px solid rgba(239, 68, 68, 0.3)', borderRadius: 10, padding: 14 }}>
+                <span style={{ fontSize: 11, fontWeight: 800, color: '#ef4444', textTransform: 'uppercase' }}>UNFIT</span>
+                <div style={{ fontSize: 24, fontWeight: 900, color: '#ef4444', marginTop: 4 }}>
                   {summary?.water_quality?.unfit ?? 0}
                 </div>
               </div>
 
-              <div style={{ background: '#fef2f2', border: '1px solid #fca5a5', borderRadius: 10, padding: 14 }}>
-                <span style={{ fontSize: 11, fontWeight: 800, color: '#991b1b', textTransform: 'uppercase' }}>PERSISTENT</span>
-                <div style={{ fontSize: 24, fontWeight: 900, color: '#7f1d1d', marginTop: 4 }}>
+              <div style={{ background: 'rgba(239, 68, 68, 0.15)', border: '1px solid rgba(239, 68, 68, 0.4)', borderRadius: 10, padding: 14 }}>
+                <span style={{ fontSize: 11, fontWeight: 800, color: '#f43f5e', textTransform: 'uppercase' }}>PERSISTENT</span>
+                <div style={{ fontSize: 24, fontWeight: 900, color: '#f43f5e', marginTop: 4 }}>
                   {summary?.water_quality?.persistent_failure ?? 0}
                 </div>
               </div>
 
-              <div style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: 10, padding: 14 }}>
-                <span style={{ fontSize: 11, fontWeight: 800, color: '#64748b', textTransform: 'uppercase' }}>UNSATISFACTORY</span>
-                <div style={{ fontSize: 24, fontWeight: 900, color: '#334155', marginTop: 4 }}>
+              <div style={{ background: 'var(--bg-page)', border: '1px solid var(--border-color)', borderRadius: 10, padding: 14 }}>
+                <span style={{ fontSize: 11, fontWeight: 800, color: 'var(--text-muted)', textTransform: 'uppercase' }}>UNSATISFACTORY</span>
+                <div style={{ fontSize: 24, fontWeight: 900, color: 'var(--text-primary)', marginTop: 4 }}>
                   {summary?.water_quality?.unsatisfactory ?? 0}
                 </div>
               </div>
@@ -522,13 +496,13 @@ export function Dashboard() {
           </div>
 
           {/* Operational Queue */}
-          <div style={{ background: '#ffffff', borderRadius: 12, border: '1px solid #e2e8f0', padding: 22, boxShadow: '0 1px 3px rgba(0,0,0,0.02)' }}>
+          <div className="ir-card" style={{ padding: 22 }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
               <div>
-                <h3 style={{ fontSize: 15, fontWeight: 800, color: '#0f172a', margin: 0 }}>
+                <h3 style={{ fontSize: 15, fontWeight: 800, color: 'var(--text-primary)', margin: 0 }}>
                   Immediate Action Queue
                 </h3>
-                <p style={{ fontSize: 12, color: '#64748b', margin: '2px 0 0 0' }}>
+                <p style={{ fontSize: 12, color: 'var(--text-muted)', margin: '2px 0 0 0' }}>
                   Pending tasks and active operational workflows
                 </p>
               </div>
@@ -543,14 +517,14 @@ export function Dashboard() {
                   alignItems: 'center',
                   padding: '12px 14px',
                   borderRadius: 8,
-                  background: '#f8fafc',
-                  border: '1px solid #e2e8f0',
+                  background: 'var(--bg-page)',
+                  border: '1px solid var(--border-color)',
                   textDecoration: 'none'
                 }}
               >
                 <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                   <AlertTriangle size={17} color="#dc2626" />
-                  <span style={{ fontSize: 13, fontWeight: 700, color: '#0f172a' }}>Active Open Alerts</span>
+                  <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-primary)' }}>Active Open Alerts</span>
                 </div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                   <span style={{ fontSize: 14, fontWeight: 800, color: '#dc2626' }}>
@@ -568,14 +542,14 @@ export function Dashboard() {
                   alignItems: 'center',
                   padding: '12px 14px',
                   borderRadius: 8,
-                  background: '#f8fafc',
-                  border: '1px solid #e2e8f0',
+                  background: 'var(--bg-page)',
+                  border: '1px solid var(--border-color)',
                   textDecoration: 'none'
                 }}
               >
                 <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                   <ShieldAlert size={17} color="#b91c1c" />
-                  <span style={{ fontSize: 13, fontWeight: 700, color: '#0f172a' }}>Escalated to Zonal/Central</span>
+                  <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-primary)' }}>Escalated to Zonal/Central</span>
                 </div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                   <span style={{ fontSize: 14, fontWeight: 800, color: '#b91c1c' }}>
@@ -593,14 +567,14 @@ export function Dashboard() {
                   alignItems: 'center',
                   padding: '12px 14px',
                   borderRadius: 8,
-                  background: '#f8fafc',
-                  border: '1px solid #e2e8f0',
+                  background: 'var(--bg-page)',
+                  border: '1px solid var(--border-color)',
                   textDecoration: 'none'
                 }}
               >
                 <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                   <ClipboardList size={17} color="#ea580c" />
-                  <span style={{ fontSize: 13, fontWeight: 700, color: '#0f172a' }}>Open Corrective Actions</span>
+                  <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-primary)' }}>Open Corrective Actions</span>
                 </div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                   <span style={{ fontSize: 14, fontWeight: 800, color: '#ea580c' }}>
@@ -618,17 +592,17 @@ export function Dashboard() {
                   alignItems: 'center',
                   padding: '12px 14px',
                   borderRadius: 8,
-                  background: '#f8fafc',
-                  border: '1px solid #e2e8f0',
+                  background: 'var(--bg-page)',
+                  border: '1px solid var(--border-color)',
                   textDecoration: 'none'
                 }}
               >
                 <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                  <Sparkles size={17} color="#0f766e" />
-                  <span style={{ fontSize: 13, fontWeight: 700, color: '#0f172a' }}>Disinfection & Dosing Due</span>
+                  <Sparkles size={17} color="#0d9488" />
+                  <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-primary)' }}>Disinfection & Dosing Due</span>
                 </div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                  <span style={{ fontSize: 14, fontWeight: 800, color: '#0f766e' }}>
+                  <span style={{ fontSize: 14, fontWeight: 800, color: '#0d9488' }}>
                     {summary?.operations?.disinfection_due ?? 0}
                   </span>
                   <ChevronRight size={14} color="#94a3b8" />
@@ -640,16 +614,16 @@ export function Dashboard() {
         </div>
 
         {/* Pan-India Sovereign Vector Mini-Map */}
-        <div style={{ background: '#ffffff', borderRadius: 12, border: '1px solid #e2e8f0', padding: 20, boxShadow: '0 1px 3px rgba(0,0,0,0.02)' }}>
+        <div className="ir-card" style={{ padding: 20 }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
             <div>
               <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                 <div style={{ width: 8, height: 8, borderRadius: '50%', background: '#10b981', boxShadow: '0 0 10px #10b981' }} />
-                <h3 style={{ fontSize: 15, fontWeight: 800, color: '#0f172a', margin: 0 }}>
+                <h3 style={{ fontSize: 15, fontWeight: 800, color: 'var(--text-primary)', margin: 0 }}>
                   Pan-India Railway Water Surveillance GIS Map
                 </h3>
               </div>
-              <p style={{ fontSize: 12, color: '#64748b', margin: '4px 0 0 0' }}>
+              <p style={{ fontSize: 12, color: 'var(--text-muted)', margin: '4px 0 0 0' }}>
                 Real-time geographic distribution of station water sampling points &bull; Authentic Survey of India Demarcation
               </p>
             </div>
@@ -661,12 +635,12 @@ export function Dashboard() {
                 gap: 4,
                 padding: '6px 12px',
                 borderRadius: 6,
-                background: '#eff6ff',
-                color: '#1d4ed8',
+                background: 'var(--bg-page)',
+                color: '#0284c7',
                 fontSize: 12.5,
                 fontWeight: 700,
                 textDecoration: 'none',
-                border: '1px solid #bfdbfe'
+                border: '1px solid var(--border-color)'
               }}
             >
               Open Full GIS Map <ExternalLink size={12} />
@@ -679,8 +653,8 @@ export function Dashboard() {
               width: '100%',
               height: 380,
               borderRadius: 10,
-              background: 'radial-gradient(ellipse at center, #bce4f2 0%, #9ecfe0 60%, #85bdd2 100%)',
-              border: '1px solid #7dd3fc',
+              background: isDark ? '#020617' : 'radial-gradient(ellipse at center, #bce4f2 0%, #9ecfe0 60%, #85bdd2 100%)',
+              border: isDark ? '1px solid #1e293b' : '1px solid #7dd3fc',
               overflow: 'hidden',
               display: 'flex',
               alignItems: 'center',
@@ -712,8 +686,8 @@ export function Dashboard() {
                   <path
                     key={state.id}
                     d={state.d}
-                    fill={IRI_ATLAS_STATE_COLORS[state.id] || '#fce5cd'}
-                    stroke="#5a4670"
+                    fill={isDark ? '#0f172a' : (IRI_ATLAS_STATE_COLORS[state.id] || '#fce5cd')}
+                    stroke={isDark ? '#334155' : '#5a4670'}
                     strokeWidth="0.75"
                     strokeLinejoin="round"
                     style={{ transition: 'fill 0.2s ease' }}
@@ -987,22 +961,22 @@ export function Dashboard() {
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(480px, 1fr))', gap: 20 }}>
           
           {/* Recent Alerts Feed (Last 5) */}
-          <div style={{ background: '#ffffff', borderRadius: 12, border: '1px solid #e2e8f0', padding: 22, boxShadow: '0 1px 3px rgba(0,0,0,0.02)' }}>
+          <div className="ir-card" style={{ padding: 22 }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                 <AlertTriangle size={18} color="#dc2626" />
-                <h3 style={{ fontSize: 15, fontWeight: 800, color: '#0f172a', margin: 0 }}>
+                <h3 style={{ fontSize: 15, fontWeight: 800, color: 'var(--text-primary)', margin: 0 }}>
                   Recent Water Quality Alerts
                 </h3>
               </div>
-              <Link to="/alerts" style={{ fontSize: 12, fontWeight: 700, color: '#2563eb', textDecoration: 'none' }}>
+              <Link to="/alerts" style={{ fontSize: 12, fontWeight: 700, color: '#0284c7', textDecoration: 'none' }}>
                 View All
               </Link>
             </div>
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
               {(!summary?.recent_alerts || summary.recent_alerts.length === 0) ? (
-                <div style={{ padding: 24, textAlign: 'center', color: '#64748b', fontSize: 13 }}>
+                <div style={{ padding: 24, textAlign: 'center', color: 'var(--text-muted)', fontSize: 13 }}>
                   No recent alerts generated.
                 </div>
               ) : (
@@ -1016,8 +990,8 @@ export function Dashboard() {
                       alignItems: 'center',
                       padding: '10px 14px',
                       borderRadius: 8,
-                      background: '#f8fafc',
-                      border: '1px solid #e2e8f0',
+                      background: 'var(--bg-page)',
+                      border: '1px solid var(--border-color)',
                       cursor: 'pointer'
                     }}
                   >
@@ -1026,19 +1000,19 @@ export function Dashboard() {
                         <span style={{ fontFamily: 'monospace', fontWeight: 800, fontSize: 12, color: '#dc2626' }}>
                           {a.alert_id}
                         </span>
-                        <span style={{ fontSize: 10, fontWeight: 800, padding: '2px 6px', borderRadius: 4, background: '#fef2f2', color: '#dc2626' }}>
+                        <span style={{ fontSize: 10, fontWeight: 800, padding: '2px 6px', borderRadius: 4, background: 'rgba(239, 68, 68, 0.15)', color: '#ef4444' }}>
                           {a.severity}
                         </span>
                       </div>
-                      <div style={{ fontSize: 12.5, fontWeight: 600, color: '#0f172a', marginTop: 3 }}>
-                        {a.station_name} • <span style={{ fontFamily: 'monospace', color: '#64748b' }}>{a.source_id_code}</span>
+                      <div style={{ fontSize: 12.5, fontWeight: 600, color: 'var(--text-primary)', marginTop: 3 }}>
+                        {a.station_name} • <span style={{ fontFamily: 'monospace', color: 'var(--text-muted)' }}>{a.source_id_code}</span>
                       </div>
                     </div>
                     <div style={{ textAlign: 'right' }}>
-                      <span style={{ fontSize: 12, fontWeight: 700, color: '#dc2626' }}>
+                      <span style={{ fontSize: 12, fontWeight: 700, color: '#ef4444' }}>
                         {a.sample_result}
                       </span>
-                      <div style={{ fontSize: 11, color: '#94a3b8', marginTop: 2 }}>
+                      <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 2 }}>
                         {a.created_at ? new Date(a.created_at).toLocaleDateString('en-IN') : '—'}
                       </div>
                     </div>
@@ -1049,22 +1023,22 @@ export function Dashboard() {
           </div>
 
           {/* Recent Lab Results Feed (Last 5) */}
-          <div style={{ background: '#ffffff', borderRadius: 12, border: '1px solid #e2e8f0', padding: 22, boxShadow: '0 1px 3px rgba(0,0,0,0.02)' }}>
+          <div className="ir-card" style={{ padding: 22 }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                <FlaskConical size={18} color="#2563eb" />
-                <h3 style={{ fontSize: 15, fontWeight: 800, color: '#0f172a', margin: 0 }}>
+                <FlaskConical size={18} color="#0284c7" />
+                <h3 style={{ fontSize: 15, fontWeight: 800, color: 'var(--text-primary)', margin: 0 }}>
                   Recent Lab Report Evaluations
                 </h3>
               </div>
-              <Link to="/lab/result-entry" style={{ fontSize: 12, fontWeight: 700, color: '#2563eb', textDecoration: 'none' }}>
+              <Link to="/lab/result-entry" style={{ fontSize: 12, fontWeight: 700, color: '#0284c7', textDecoration: 'none' }}>
                 Lab Portal
               </Link>
             </div>
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
               {(!summary?.recent_lab_reports || summary.recent_lab_reports.length === 0) ? (
-                <div style={{ padding: 24, textAlign: 'center', color: '#64748b', fontSize: 13 }}>
+                <div style={{ padding: 24, textAlign: 'center', color: 'var(--text-muted)', fontSize: 13 }}>
                   No recent lab reports recorded.
                 </div>
               ) : (
@@ -1077,15 +1051,15 @@ export function Dashboard() {
                       alignItems: 'center',
                       padding: '10px 14px',
                       borderRadius: 8,
-                      background: '#f8fafc',
-                      border: '1px solid #e2e8f0'
+                      background: 'var(--bg-page)',
+                      border: '1px solid var(--border-color)'
                     }}
                   >
                     <div>
-                      <div style={{ fontFamily: 'monospace', fontWeight: 800, fontSize: 12, color: '#1e3a8a' }}>
+                      <div style={{ fontFamily: 'monospace', fontWeight: 800, fontSize: 12, color: '#0284c7' }}>
                         {r.report_id}
                       </div>
-                      <div style={{ fontSize: 11.5, color: '#64748b', marginTop: 3 }}>
+                      <div style={{ fontSize: 11.5, color: 'var(--text-muted)', marginTop: 3 }}>
                         Report Date: {r.report_date ? new Date(r.report_date).toLocaleDateString('en-IN') : '—'}
                       </div>
                     </div>
@@ -1095,9 +1069,9 @@ export function Dashboard() {
                         fontWeight: 800,
                         padding: '3px 8px',
                         borderRadius: 6,
-                        background: r.overall_result === 'FIT' ? '#f0fdf4' : '#fef2f2',
-                        color: r.overall_result === 'FIT' ? '#16a34a' : '#dc2626',
-                        border: `1px solid ${r.overall_result === 'FIT' ? '#bbf7d0' : '#fecaca'}`
+                        background: r.overall_result === 'FIT' ? 'rgba(16, 185, 129, 0.15)' : 'rgba(239, 68, 68, 0.15)',
+                        color: r.overall_result === 'FIT' ? '#10b981' : '#ef4444',
+                        border: `1px solid ${r.overall_result === 'FIT' ? 'rgba(16, 185, 129, 0.3)' : 'rgba(239, 68, 68, 0.3)'}`
                       }}>
                         {r.overall_result || 'EVALUATED'}
                       </span>

@@ -41,130 +41,104 @@ export function MasterData() {
   };
 
   return (
-    <div style={{ padding: '24px 28px', display: 'flex', flexDirection: 'column', gap: 20 }}>
-      {/* Header */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 12 }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-          <div style={{ background: '#eff6ff', padding: 10, borderRadius: 12, border: '1px solid #bfdbfe' }}>
-            <Database size={22} color="#1e40af" />
+    <div className="ir-page">
+      <div className="ir-container space-y-6">
+        {/* Header */}
+        <div className="ir-header-card flex items-center justify-between flex-wrap gap-4">
+          <div className="flex items-center gap-3">
+            <div className="p-3 rounded-xl bg-blue-500/15 border border-blue-500/30">
+              <Database size={24} className="text-sky-500" />
+            </div>
+            <div>
+              <h2 className="text-2xl font-black tracking-tight" style={{ color: 'var(--text-primary)' }}>
+                Master Data Architecture
+              </h2>
+              <p className="text-sm font-medium mt-0.5" style={{ color: 'var(--text-secondary)' }}>
+                Configure Railway zones, divisions, water sources, testing parameters, and BIS IS 10500 standards
+              </p>
+            </div>
           </div>
-          <div>
-            <h2 style={{ fontSize: 22, fontWeight: 800, color: '#0f172a', margin: 0, letterSpacing: '-0.4px' }}>
-              Master Data Management
-            </h2>
-            <p style={{ fontSize: 13, color: '#64748b', marginTop: 2 }}>
-              Configure Railway zones, divisions, water sources, parameters, BIS standards, and officer assignments
-            </p>
-          </div>
-        </div>
-        <button onClick={fetchData} style={{
-          display: 'flex', alignItems: 'center', gap: 6, padding: '8px 14px', borderRadius: 8,
-          border: '1px solid #e2e8f0', background: 'white', color: '#475569', fontSize: 13, fontWeight: 600,
-          cursor: 'pointer',
-        }}>
-          <RefreshCw size={14} /> Refresh
-        </button>
-      </div>
-
-      {/* Tabs */}
-      <div style={{
-        display: 'flex', gap: 6, borderBottom: '1px solid #e2e8f0', paddingBottom: 8,
-        overflowX: 'auto',
-      }}>
-        {tabs.map(tab => (
-          <button
-            key={tab.id}
-            onClick={() => setActiveTab(tab.id)}
-            style={{
-              padding: '8px 14px', borderRadius: 8, fontSize: 13, fontWeight: 700,
-              cursor: 'pointer', border: 'none', whiteSpace: 'nowrap',
-              background: activeTab === tab.id ? '#1e3a8a' : 'white',
-              color: activeTab === tab.id ? 'white' : '#475569',
-              boxShadow: activeTab === tab.id ? '0 2px 8px rgba(30,58,138,0.25)' : 'none',
-              transition: 'all 0.15s ease',
-            }}
+          <button 
+            onClick={fetchData} 
+            className="ir-btn-secondary flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold"
           >
-            {tab.label}
+            <RefreshCw size={14} className={loading ? 'animate-spin' : ''} /> Refresh
           </button>
-        ))}
-      </div>
-
-      {/* Table Card */}
-      <div style={{
-        background: 'white', borderRadius: 16,
-        boxShadow: '0 1px 4px rgba(0,0,0,0.06)', border: '1px solid #f1f5f9', overflow: 'hidden',
-      }}>
-        <div style={{ padding: '16px 20px', borderBottom: '1px solid #f1f5f9', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <span style={{ fontSize: 13, fontWeight: 700, color: '#334155' }}>
-            {tabs.find(t => t.id === activeTab)?.label} ({data.length} records)
-          </span>
         </div>
 
-        {loading ? (
-          <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: 260 }}>
-            <div style={{
-              width: 36, height: 36, border: '3px solid #e2e8f0',
-              borderTopColor: '#2563eb', borderRadius: '50%',
-              animation: 'spin 0.8s linear infinite',
-            }} />
-            <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
+        {/* Tabs */}
+        <div className="flex gap-2 overflow-x-auto pb-1">
+          {tabs.map(tab => (
+            <button
+              key={tab.id}
+              onClick={() => setActiveTab(tab.id)}
+              className={`px-3.5 py-2 rounded-xl text-xs font-bold transition-all whitespace-nowrap ${
+                activeTab === tab.id ? 'ir-btn-primary' : 'ir-btn-secondary'
+              }`}
+            >
+              {tab.label}
+            </button>
+          ))}
+        </div>
+
+        {/* Table Card */}
+        <div className="ir-card overflow-hidden">
+          <div style={{ padding: '16px 20px', borderBottom: '1px solid var(--border-color)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <span style={{ fontSize: 13, fontWeight: 800, color: 'var(--text-primary)' }}>
+              {tabs.find(t => t.id === activeTab)?.label} ({data.length} records)
+            </span>
           </div>
-        ) : data.length === 0 ? (
-          <div style={{ textAlign: 'center', color: '#94a3b8', padding: '60px 0', fontSize: 14 }}>
-            No records found for this master entity.
-          </div>
-        ) : (
-          <div style={{ overflowX: 'auto', maxHeight: '550px' }}>
-            <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-              <thead>
-                <tr style={{ background: '#f8fafc', position: 'sticky', top: 0, zIndex: 10 }}>
-                  {Object.keys(data[0] || {}).map(key => (
-                    <th key={key} style={{
-                      padding: '12px 18px', textAlign: 'left',
-                      fontSize: 11, fontWeight: 700, color: '#64748b',
-                      textTransform: 'uppercase', letterSpacing: '0.05em',
-                      borderBottom: '1px solid #e2e8f0', background: '#f8fafc',
-                      whiteSpace: 'nowrap',
-                    }}>
-                      {key.replace(/_/g, ' ')}
-                    </th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {data.map((item, idx) => (
-                  <tr key={idx} style={{
-                    borderBottom: '1px solid #f8fafc',
-                    background: idx % 2 === 0 ? 'white' : '#fafafa',
-                  }}>
-                    {Object.values(item).map((val: any, vIdx) => (
-                      <td key={vIdx} style={{
-                        padding: '12px 18px', fontSize: 12.5, color: '#334155',
-                        whiteSpace: 'nowrap',
-                      }}>
-                        {val === null || val === undefined ? (
-                          <span style={{ color: '#cbd5e1' }}>—</span>
-                        ) : typeof val === 'boolean' ? (
-                          <span style={{
-                            padding: '2px 8px', borderRadius: 10, fontSize: 10.5, fontWeight: 800,
-                            background: val ? '#f0fdf4' : '#fef2f2',
-                            color: val ? '#16a34a' : '#dc2626',
-                          }}>
-                            {val ? 'TRUE' : 'FALSE'}
-                          </span>
-                        ) : typeof val === 'object' ? (
-                          JSON.stringify(val)
-                        ) : (
-                          String(val)
-                        )}
-                      </td>
+
+          {loading ? (
+            <div className="text-center py-20" style={{ color: 'var(--text-muted)' }}>
+              <RefreshCw className="w-6 h-6 animate-spin mx-auto mb-2 text-sky-500" />
+              Loading master database records...
+            </div>
+          ) : data.length === 0 ? (
+            <div className="text-center py-16" style={{ color: 'var(--text-muted)' }}>
+              No records found for this master entity.
+            </div>
+          ) : (
+            <div style={{ overflowX: 'auto', maxHeight: '550px' }}>
+              <table className="ir-table">
+                <thead>
+                  <tr>
+                    {Object.keys(data[0] || {}).map(key => (
+                      <th key={key} className="whitespace-nowrap">
+                        {key.replace(/_/g, ' ')}
+                      </th>
                     ))}
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
+                </thead>
+                <tbody>
+                  {data.map((item, idx) => (
+                    <tr key={idx}>
+                      {Object.values(item).map((val: any, vIdx) => (
+                        <td key={vIdx} className="whitespace-nowrap">
+                          {val === null || val === undefined ? (
+                            <span style={{ color: 'var(--text-muted)' }}>—</span>
+                          ) : typeof val === 'boolean' ? (
+                            <span style={{
+                              padding: '2px 8px', borderRadius: 10, fontSize: 10.5, fontWeight: 800,
+                              background: val ? 'rgba(16, 185, 129, 0.15)' : 'rgba(239, 68, 68, 0.15)',
+                              color: val ? '#10b981' : '#ef4444',
+                            }}>
+                              {val ? 'TRUE' : 'FALSE'}
+                            </span>
+                          ) : typeof val === 'object' ? (
+                            JSON.stringify(val)
+                          ) : (
+                            String(val)
+                          )}
+                        </td>
+                      ))}
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );
