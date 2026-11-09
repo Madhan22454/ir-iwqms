@@ -37,6 +37,47 @@ export function geoToSvgCoords(lat: number, lng: number): { x: number; y: number
   return { x, y };
 }
 
+// Authentic IndiaRailInfo (IRI) Atlas Pastel Color Palette for All 36 States & UTs
+export const IRI_ATLAS_STATE_COLORS: Record<string, string> = {
+  'IN-JK': '#cbe8f6', // Jammu & Kashmir (pale cyan-blue)
+  'IN-LA': '#d5ecf7', // Ladakh (soft alpine blue)
+  'IN-HP': '#d7f3fc', // Himachal Pradesh (soft ice cyan)
+  'IN-PB': '#def7de', // Punjab (soft mint green)
+  'IN-HR': '#f1f8d8', // Haryana (soft pale lime)
+  'IN-DL': '#fde49e', // Delhi (soft warm yellow-amber)
+  'IN-UT': '#dbeaf7', // Uttarakhand (soft pastel blue)
+  'IN-RJ': '#d4f6d4', // Rajasthan (pastel mint green)
+  'IN-UP': '#fff0b3', // Uttar Pradesh (pastel warm yellow)
+  'IN-BR': '#d7f2d7', // Bihar (soft pastel green)
+  'IN-SK': '#d5eef7', // Sikkim (soft blue-cyan)
+  'IN-WB': '#fcf4c0', // West Bengal (warm cream yellow)
+  'IN-JH': '#fef1cc', // Jharkhand (pale yellow)
+  'IN-OR': '#fde2cf', // Odisha (soft peach)
+  'IN-CT': '#fce3d2', // Chhattisgarh (soft pale peach)
+  'IN-MP': '#fce1d4', // Madhya Pradesh (soft peach pink)
+  'IN-GJ': '#ead8f7', // Gujarat (pastel lavender)
+  'IN-MH': '#fcdfe3', // Maharashtra (pastel rose pink)
+  'IN-GA': '#e5d0f7', // Goa (pastel lavender)
+  'IN-TG': '#fef1c8', // Telangana (soft pastel yellow)
+  'IN-AP': '#fff0b8', // Andhra Pradesh (pastel yellow)
+  'IN-KA': '#d6f4d6', // Karnataka (pale mint green)
+  'IN-KL': '#c9eff7', // Kerala (pale pastel cyan)
+  'IN-TN': '#fcdfe3', // Tamil Nadu (pastel rose pink)
+  'IN-AS': '#cceef8', // Assam (pale cyan)
+  'IN-AR': '#e5f6fc', // Arunachal Pradesh (pale blue)
+  'IN-ML': '#d8f1f7', // Meghalaya (soft cyan)
+  'IN-TR': '#d4eff8', // Tripura (soft blue)
+  'IN-MZ': '#dff3f9', // Mizoram (soft cyan)
+  'IN-MN': '#d7eff8', // Manipur (soft blue)
+  'IN-NL': '#daf2f8', // Nagaland (soft cyan)
+  'IN-AN': '#cbe8f6', // Andaman & Nicobar (soft ocean cyan)
+  'IN-LD': '#cbe8f6', // Lakshadweep (soft ocean cyan)
+  'IN-PY': '#fcdfe3', // Puducherry (pastel rose pink)
+  'IN-CH': '#def7de', // Chandigarh (soft mint)
+  'IN-DN': '#ead8f7', // Dadra & Nagar Haveli (pastel lavender)
+  'IN-DD': '#ead8f7', // Daman & Diu (pastel lavender)
+};
+
 export const INDIA_SVG_STATES: IndiaStatePath[] = [
   {
     "id": "IN-AN",

@@ -15,7 +15,7 @@ import {
   FALLBACK_DIVISIONS, 
   FALLBACK_ZONES 
 } from '../data/gisFallbackData';
-import { INDIA_SVG_STATES, INDIA_SVG_VIEWBOX, geoToSvgCoords } from '../data/indiaSvgData';
+import { INDIA_SVG_STATES, INDIA_SVG_VIEWBOX, geoToSvgCoords, IRI_ATLAS_STATE_COLORS } from '../data/indiaSvgData';
 import { INDIAN_RAILWAY_TRUNK_CORRIDORS } from '../data/indiaRailwayCorridors';
 
 // Water quality status styling configuration
@@ -95,6 +95,7 @@ export default function GISMap() {
   const [filterDivision, setFilterDivision] = useState<string>('ALL');
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [showCorridors, setShowCorridors] = useState(true);
+  const [mapTheme, setMapTheme] = useState<'iri' | 'dark'>('iri');
   const [copiedCoords, setCopiedCoords] = useState(false);
 
   // Pan and Zoom state
@@ -388,6 +389,33 @@ export default function GISMap() {
 
           {/* Right: Quick Tools */}
           <div className="flex items-center gap-1.5">
+            {/* THEME SWITCHER: IRI ATLAS (PRIORITIZED) vs DARK COMMAND (BACKUP) */}
+            <div className="flex items-center bg-slate-950/80 p-0.5 rounded-lg border border-slate-700/80 shrink-0">
+              <button
+                onClick={() => setMapTheme('iri')}
+                title="Switch to IndiaRailInfo (IRI) Atlas Style (Prioritized)"
+                className={`flex items-center gap-1 px-2.5 py-1 rounded text-xs font-bold transition-all ${
+                  mapTheme === 'iri'
+                    ? 'bg-gradient-to-r from-emerald-600 to-teal-600 text-white shadow-md'
+                    : 'text-slate-400 hover:text-slate-200'
+                }`}
+              >
+                <span>🗺️ IRI Atlas</span>
+                <span className="text-[9px] bg-emerald-700/60 px-1 py-0.2 rounded font-mono hidden md:inline">DEFAULT</span>
+              </button>
+              <button
+                onClick={() => setMapTheme('dark')}
+                title="Switch to Dark Ops Cyber Command (Backup)"
+                className={`flex items-center gap-1 px-2 py-1 rounded text-xs font-bold transition-all ${
+                  mapTheme === 'dark'
+                    ? 'bg-blue-600 text-white shadow-md'
+                    : 'text-slate-400 hover:text-slate-200'
+                }`}
+              >
+                <span>⚡ Dark Ops</span>
+              </button>
+            </div>
+
             <button
               onClick={handleResetView}
               title="Reset to Pan-India view"
@@ -508,18 +536,25 @@ export default function GISMap() {
 
       {/* ----------------- MAIN SOVEREIGN INDIA VECTOR WORKSPACE ----------------- */}
       <div 
-        className="relative flex-1 w-full h-full overflow-hidden bg-slate-950 cursor-grab active:cursor-grabbing flex items-center justify-center"
+        className="relative flex-1 w-full h-full overflow-hidden cursor-grab active:cursor-grabbing flex items-center justify-center transition-colors duration-300"
+        style={{
+          background: mapTheme === 'iri' 
+            ? 'radial-gradient(ellipse at center, #bce4f2 0%, #9ecfe0 60%, #83bdd2 100%)' 
+            : '#020617'
+        }}
         onMouseDown={handleMouseDown}
         onMouseMove={handleMouseMove}
         onMouseUp={handleMouseUp}
         onMouseLeave={handleMouseUp}
         onWheel={handleWheel}
       >
-        {/* Subtle Radar Background Grid Pattern */}
+        {/* Subtle Background Pattern */}
         <div 
           className="absolute inset-0 pointer-events-none opacity-20"
           style={{
-            backgroundImage: `radial-gradient(rgba(56, 189, 248, 0.25) 1px, transparent 1px)`,
+            backgroundImage: mapTheme === 'iri' 
+              ? `radial-gradient(rgba(14, 116, 144, 0.3) 1px, transparent 1px)`
+              : `radial-gradient(rgba(56, 189, 248, 0.25) 1px, transparent 1px)`,
             backgroundSize: '28px 28px'
           }}
         />
@@ -541,8 +576,8 @@ export default function GISMap() {
         {/* TOP LEFT BADGE */}
         <div className="absolute top-4 left-4 z-10 flex flex-col gap-1.5 pointer-events-none">
           <div className="bg-slate-900/95 backdrop-blur-md border border-sky-500/40 rounded-xl px-3 py-1.5 shadow-2xl flex items-center gap-2 text-xs font-bold text-sky-200 w-fit">
-            <span className="w-2.5 h-2.5 rounded-full bg-sky-400 animate-pulse"></span>
-            <span>OFFICIAL MAP OF INDIA • SURVEY OF INDIA COMPLIANT</span>
+            <span className="w-2.5 h-2.5 rounded-full bg-emerald-400"></span>
+            <span>{mapTheme === 'iri' ? 'INDIARAILINFO (IRI) ATLAS STYLE • SURVEY OF INDIA COMPLIANT' : 'OFFICIAL MAP OF INDIA • SURVEY OF INDIA COMPLIANT'}</span>
           </div>
           {hoveredState && (
             <div className="bg-slate-900/95 backdrop-blur-md border border-slate-700/80 rounded-lg px-2.5 py-1 shadow-xl text-xs font-semibold text-slate-300 w-fit animate-in fade-in duration-150">
@@ -581,26 +616,48 @@ export default function GISMap() {
         </div>
 
         {/* MAP LEGEND BADGE (BOTTOM LEFT) */}
-        <div className="absolute bottom-4 left-4 z-10 bg-slate-900/95 backdrop-blur-md border border-slate-700/80 rounded-xl p-3 shadow-2xl hidden md:block max-w-xs pointer-events-auto">
-          <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2 flex items-center justify-between">
-            <span>Water Quality Status</span>
+        <div className="absolute bottom-4 left-4 z-10 bg-slate-900/95 backdrop-blur-md border border-slate-700/80 rounded-xl p-3 shadow-2xl hidden md:block max-w-sm pointer-events-auto">
+          <div className="text-[10px] font-bold text-slate-300 uppercase tracking-wider mb-2 flex items-center justify-between">
+            <span>{mapTheme === 'iri' ? 'IndiaRailInfo (IRI) Atlas Legend' : 'Water Quality Status'}</span>
             <span className="text-[9px] text-blue-400 font-mono">IS 10500:2012</span>
           </div>
+
+          {mapTheme === 'iri' && (
+            <div className="grid grid-cols-2 gap-x-3 gap-y-1 text-[10px] pb-2 mb-2 border-b border-slate-700/80">
+              <div className="flex items-center gap-1.5">
+                <span className="w-4 h-1 rounded bg-red-600"></span>
+                <span className="text-slate-200">Electrified Double</span>
+              </div>
+              <div className="flex items-center gap-1.5">
+                <span className="w-4 h-1 rounded bg-green-600"></span>
+                <span className="text-slate-200">Broad Gauge Main</span>
+              </div>
+              <div className="flex items-center gap-1.5">
+                <span className="w-4 h-1 rounded bg-purple-600"></span>
+                <span className="text-slate-200">Deccan / Central</span>
+              </div>
+              <div className="flex items-center gap-1.5">
+                <span className="w-4 h-1 rounded bg-blue-600"></span>
+                <span className="text-slate-200">East Coast Main</span>
+              </div>
+            </div>
+          )}
+
           <div className="grid grid-cols-2 gap-x-3 gap-y-1.5 text-[11px]">
             <div className="flex items-center gap-1.5">
               <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 shadow-sm shadow-emerald-500/50"></span>
-              <span className="text-slate-300">Compliant</span>
+              <span className="text-slate-300">Compliant (IS 10500)</span>
             </div>
             <div className="flex items-center gap-1.5">
               <span className="w-2.5 h-2.5 rounded-full bg-amber-500 shadow-sm shadow-amber-500/50"></span>
-              <span className="text-slate-300">Attention</span>
+              <span className="text-slate-300">Attention Needed</span>
             </div>
             <div className="flex items-center gap-1.5">
               <span className="w-2.5 h-2.5 rounded-full bg-orange-500 shadow-sm shadow-orange-500/50"></span>
-              <span className="text-slate-300">Overdue</span>
+              <span className="text-slate-300">Testing Overdue</span>
             </div>
             <div className="flex items-center gap-1.5">
-              <span className="w-2.5 h-2.5 rounded-full bg-rose-500 shadow-sm shadow-rose-500/50 animate-pulse"></span>
+              <span className="w-2.5 h-2.5 rounded-full bg-rose-500 shadow-sm shadow-rose-500/50"></span>
               <span className="text-rose-300 font-medium">Critical Unfit</span>
             </div>
           </div>
@@ -630,18 +687,35 @@ export default function GISMap() {
             <g id="india-states-layer">
               {INDIA_SVG_STATES.map(state => {
                 const isHovered = hoveredState === state.name;
+                const iriPastel = IRI_ATLAS_STATE_COLORS[state.id] || '#fde8d7';
+
+                const fillColor = mapTheme === 'iri'
+                  ? (isHovered ? '#ffffff' : iriPastel)
+                  : (isHovered ? '#1e293b' : '#0f172a');
+
+                const strokeColor = mapTheme === 'iri'
+                  ? (isHovered ? '#1d4ed8' : '#57436e')
+                  : (isHovered ? '#38bdf8' : '#334155');
+
+                const strokeWidth = mapTheme === 'iri'
+                  ? (isHovered ? 1.6 : 0.8)
+                  : (isHovered ? 1.6 : 0.85);
+
                 return (
                   <path
                     key={state.id}
                     id={state.id}
                     d={state.d}
-                    fill={isHovered ? '#1e293b' : '#0f172a'}
-                    stroke={isHovered ? '#38bdf8' : '#334155'}
-                    strokeWidth={isHovered ? 1.6 : 0.85}
+                    fill={fillColor}
+                    stroke={strokeColor}
+                    strokeWidth={strokeWidth}
+                    strokeLinejoin="round"
                     className="transition-colors duration-150 cursor-pointer"
                     onMouseEnter={() => setHoveredState(state.name)}
                     onMouseLeave={() => setHoveredState(null)}
-                  />
+                  >
+                    <title>{state.name}</title>
+                  </path>
                 );
               })}
             </g>
@@ -649,31 +723,73 @@ export default function GISMap() {
             {/* 2. RENDER INDIAN RAILWAYS BROAD GAUGE TRUNK CORRIDORS */}
             {showCorridors && (
               <g id="india-railway-corridors-layer" className="pointer-events-none">
-                {projectedCorridors.map(corridor => (
-                  <g key={corridor.id}>
-                    {/* Outer glow stroke */}
-                    <polyline
-                      points={corridor.points}
-                      fill="none"
-                      stroke={corridor.color || '#3b82f6'}
-                      strokeWidth="3.2"
-                      strokeOpacity="0.7"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                    />
-                    {/* Inner high-contrast dashed railway line */}
-                    <polyline
-                      points={corridor.points}
-                      fill="none"
-                      stroke="#ffffff"
-                      strokeWidth="1.4"
-                      strokeDasharray="4, 5"
-                      strokeOpacity="0.95"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                    />
-                  </g>
-                ))}
+                {projectedCorridors.map(corridor => {
+                  if (mapTheme === 'iri') {
+                    // IndiaRailInfo Atlas Style Track Rendering
+                    return (
+                      <g key={corridor.id}>
+                        {/* High-visibility white casing for contrast over pastel states */}
+                        <polyline
+                          points={corridor.points}
+                          fill="none"
+                          stroke="#ffffff"
+                          strokeWidth="3.4"
+                          strokeOpacity="0.85"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                        />
+                        {/* Vibrant Railway Track */}
+                        <polyline
+                          points={corridor.points}
+                          fill="none"
+                          stroke={corridor.color}
+                          strokeWidth="1.9"
+                          strokeOpacity="0.95"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                        />
+                        {/* Center dashed line for Electrified Double Tracks */}
+                        {corridor.trackType === 'ELECTRIFIED_DOUBLE' && (
+                          <polyline
+                            points={corridor.points}
+                            fill="none"
+                            stroke="#ffffff"
+                            strokeWidth="0.8"
+                            strokeDasharray="3 4"
+                            strokeOpacity="0.95"
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                          />
+                        )}
+                      </g>
+                    );
+                  }
+
+                  // Dark Command Cyber corridor style (Backup)
+                  return (
+                    <g key={corridor.id}>
+                      <polyline
+                        points={corridor.points}
+                        fill="none"
+                        stroke={corridor.color || '#3b82f6'}
+                        strokeWidth="3.2"
+                        strokeOpacity="0.7"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                      />
+                      <polyline
+                        points={corridor.points}
+                        fill="none"
+                        stroke="#ffffff"
+                        strokeWidth="1.4"
+                        strokeDasharray="4, 5"
+                        strokeOpacity="0.95"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                      />
+                    </g>
+                  );
+                })}
               </g>
             )}
 
@@ -696,61 +812,55 @@ export default function GISMap() {
                     onMouseEnter={() => setHoveredStation(stn)}
                     onMouseLeave={() => setHoveredStation(null)}
                   >
-                    {/* Pulsing Radar Ring for Urgent Stations */}
+                    {/* Concentric Steady Alert Halo Ring for Urgent Stations (NO drifting/moving circle animation) */}
                     {isUrgent && (
                       <circle
                         cx={stn.svgX}
                         cy={stn.svgY}
-                        r="14"
+                        r={isSelected ? 11 : 8.5}
                         fill="none"
                         stroke={statusColor}
-                        strokeWidth="1.8"
-                        strokeOpacity="0.8"
-                        className="animate-ping"
+                        strokeWidth="1.2"
+                        strokeOpacity="0.7"
+                        strokeDasharray="2.5 2.5"
                       />
                     )}
 
-                    {/* Outer Status Ring */}
+                    {/* Authentic IndiaRailInfo Station Junction Ring */}
                     <circle
                       cx={stn.svgX}
                       cy={stn.svgY}
-                      r={isSelected ? 8.5 : 6.5}
-                      fill={statusColor}
-                      stroke="#ffffff"
+                      r={isSelected ? 6.5 : (mapTheme === 'iri' ? 4.5 : 5.5)}
+                      fill={mapTheme === 'iri' ? '#ffffff' : statusColor}
+                      stroke={mapTheme === 'iri' ? statusColor : '#ffffff'}
                       strokeWidth={isSelected ? 2.5 : 1.8}
-                      className="shadow-lg"
+                      className="shadow-sm"
                     />
 
                     {/* Inner Core Dot */}
                     <circle
                       cx={stn.svgX}
                       cy={stn.svgY}
-                      r={isSelected ? 3.5 : 2.5}
-                      fill="#ffffff"
+                      r={isSelected ? 3.0 : (mapTheme === 'iri' ? 2.0 : 2.2)}
+                      fill={mapTheme === 'iri' ? statusColor : '#ffffff'}
                     />
 
-                    {/* Station Code Badge Pill */}
-                    <g transform={`translate(${stn.svgX}, ${stn.svgY - 11})`}>
-                      <rect
-                        x="-16"
-                        y="-8"
-                        width="32"
-                        height="12"
-                        rx="4"
-                        fill="rgba(15, 23, 42, 0.9)"
-                        stroke={isSelected ? '#38bdf8' : 'rgba(100, 116, 139, 0.6)'}
-                        strokeWidth="0.8"
-                      />
+                    {/* Cartographic Halo Station Name & Code (Legible without jittery boxes) */}
+                    <g transform={`translate(${stn.svgX}, ${stn.svgY - 7})`}>
                       <text
                         x="0"
-                        y="1"
+                        y="0"
                         textAnchor="middle"
-                        fill="#f8fafc"
-                        fontSize="7.5"
+                        fill={mapTheme === 'iri' ? '#0f172a' : '#ffffff'}
+                        fontSize="6.8"
                         fontWeight="800"
-                        fontFamily="ui-monospace, monospace"
+                        fontFamily="system-ui, -apple-system, sans-serif"
+                        paintOrder="stroke"
+                        stroke={mapTheme === 'iri' ? '#ffffff' : '#090e17'}
+                        strokeWidth="2.5"
+                        strokeLinejoin="round"
                       >
-                        {stn.code}
+                        {stn.name.split(' ')[0]} {stn.code}
                       </text>
                     </g>
                   </g>
