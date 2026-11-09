@@ -70,6 +70,54 @@ def read_stations(skip: int = 0, limit: int = 1000, db: Session = Depends(get_db
             q = q.filter(Station.id == current_user.station_id)
     return q.offset(skip).limit(limit).all()
 
+@router.get("/stations/{station_id}")
+def read_station_detail(station_id: int, db: Session = Depends(get_db)):
+    """Get full station details with its division, zone, and associated water sources."""
+    station = db.query(Station).filter(Station.id == station_id).first()
+    if not station:
+        raise HTTPException(status_code=404, detail="Station not found")
+    
+    div = station.division
+    zone = div.zone if div else None
+    
+    sources = db.query(WaterSource).filter(WaterSource.station_id == station_id).all()
+    
+    return {
+        "id": station.id,
+        "name": station.name,
+        "code": station.code,
+        "category": station.category,
+        "gps_lat": station.gps_lat,
+        "gps_long": station.gps_long,
+        "source_provenance": station.source_provenance,
+        "division": {
+            "id": div.id if div else None,
+            "name": div.name if div else None,
+            "code": div.code if div else None,
+        } if div else None,
+        "zone": {
+            "id": zone.id if zone else None,
+            "name": zone.name if zone else None,
+            "code": zone.code if zone else None,
+        } if zone else None,
+        "water_sources": [
+            {
+                "id": ws.id,
+                "source_id_code": ws.source_id_code,
+                "source_type": ws.source_type,
+                "capacity": ws.capacity,
+                "current_status": ws.current_status,
+                "disinfection_method": ws.disinfection_method,
+                "last_disinfection_date": ws.last_disinfection_date.isoformat() if ws.last_disinfection_date else None,
+                "next_disinfection_due": ws.next_disinfection_due.isoformat() if ws.next_disinfection_due else None,
+                "residual_chlorine_last": ws.residual_chlorine_last,
+                "last_bacteriological_sample_date": ws.last_bacteriological_sample_date.isoformat() if ws.last_bacteriological_sample_date else None,
+                "next_bacteriological_sample_due": ws.next_bacteriological_sample_due.isoformat() if ws.next_bacteriological_sample_due else None,
+            }
+            for ws in sources
+        ]
+    }
+
 # --- Water Source ---
 @router.post("/water-sources/", response_model=WaterSourceSchema)
 def create_water_source(source: WaterSourceCreate, current_user: CurrentUser, db: Session = Depends(get_db)):
@@ -129,3 +177,42 @@ def read_water_sources(skip: int = 0, limit: int = 1000, db: Session = Depends(g
         elif current_user.role == "STATION_INCHARGE" and current_user.station_id:
             q = q.filter(WaterSource.station_id == current_user.station_id)
     return q.offset(skip).limit(limit).all()
+
+from pydantic import BaseModel
+import datetime
+
+class DisinfectionRecordCreate(BaseModel):
+    disinfection_method: str = "CHLORINATION"
+    residual_chlorine_ppm: float
+    disinfection_date: datetime.datetime = None
+    remarks: str = None
+
+@router.post("/water-sources/{source_id}/disinfection")
+def record_disinfection(
+    source_id: int,
+    record: DisinfectionRecordCreate,
+    db: Session = Depends(get_db),
+    current_user: CurrentUser = None,
+):
+    """Record a disinfection event and residual chlorine reading for a water source."""
+    source = db.query(WaterSource).filter(WaterSource.id == source_id).first()
+    if not source:
+        raise HTTPException(status_code=404, detail="Water source not found")
+    
+    dis_date = record.disinfection_date or datetime.datetime.utcnow()
+    freq_days = source.disinfection_frequency_days or 30
+    
+    source.last_disinfection_date = dis_date
+    source.next_disinfection_due = dis_date + datetime.timedelta(days=freq_days)
+    source.residual_chlorine_last = record.residual_chlorine_ppm
+    source.disinfection_method = record.disinfection_method
+    
+    db.commit()
+    db.refresh(source)
+    return {
+        "message": "Disinfection recorded successfully",
+        "source_id": source.id,
+        "last_disinfection_date": source.last_disinfection_date.isoformat(),
+        "next_disinfection_due": source.next_disinfection_due.isoformat(),
+        "residual_chlorine_ppm": source.residual_chlorine_last,
+    }

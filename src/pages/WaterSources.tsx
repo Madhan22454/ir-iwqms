@@ -1,0 +1,1010 @@
+import { useState, useEffect, useMemo } from 'react';
+import axios from 'axios';
+import {
+  Droplets,
+  Search,
+  Plus,
+  RefreshCw,
+  AlertCircle,
+  ChevronLeft,
+  ChevronRight,
+  X,
+  CheckCircle
+} from 'lucide-react';
+import { API_URL } from '../config/api';
+
+interface WaterSourceItem {
+  id: number;
+  station_id: number;
+  source_id_code: string;
+  source_type: string;
+  capacity?: string;
+  areas_supplied?: string;
+  population_served?: number;
+  storage_tank?: string;
+  treatment_facility?: string;
+  disinfection_method?: string;
+  disinfection_frequency_days?: number;
+  gps_lat?: number;
+  gps_long?: number;
+  current_status: string;
+  consecutive_failures?: number;
+  total_failures?: number;
+  last_bacteriological_sample_date?: string;
+  last_chemical_sample_date?: string;
+  next_bacteriological_sample_due?: string;
+  next_chemical_sample_due?: string;
+  last_disinfection_date?: string;
+  next_disinfection_due?: string;
+  residual_chlorine_last?: number;
+}
+
+interface Station {
+  id: number;
+  name: string;
+  code: string;
+  division_id: number;
+}
+
+interface Division {
+  id: number;
+  name: string;
+  code: string;
+  zone_id: number;
+}
+
+interface Zone {
+  id: number;
+  name: string;
+  code: string;
+}
+
+const SOURCE_TYPES = [
+  'BOREWELL',
+  'TUBEWELL',
+  'OPEN_WELL',
+  'MUNICIPAL_SUPPLY',
+  'STORAGE_TANK',
+  'FILTRATION_PLANT',
+  'WATER_COOLER',
+  'OTHER'
+];
+
+const DISINFECTION_METHODS = [
+  'CHLORINATION',
+  'GAS_CHLORINATION',
+  'BLEACHING_POWDER',
+  'UV',
+  'OZONATION',
+  'RO',
+  'NONE'
+];
+
+export default function WaterSources() {
+  const [sources, setSources] = useState<WaterSourceItem[]>([]);
+  const [stations, setStations] = useState<Station[]>([]);
+  const [divisions, setDivisions] = useState<Division[]>([]);
+  const [zones, setZones] = useState<Zone[]>([]);
+  
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  // Filters
+  const [searchTerm, setSearchTerm] = useState('');
+  const [selectedZone, setSelectedZone] = useState('ALL');
+  const [selectedDivision, setSelectedDivision] = useState('ALL');
+  const [selectedType, setSelectedType] = useState('ALL');
+  const [selectedStatus, setSelectedStatus] = useState('ALL');
+
+  // Pagination
+  const [currentPage, setCurrentPage] = useState(1);
+  const pageSize = 20;
+
+  // New Source Modal
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [modalSubmitting, setModalSubmitting] = useState(false);
+  const [modalError, setModalError] = useState<string | null>(null);
+  const [modalSuccess, setModalSuccess] = useState<string | null>(null);
+
+  const [formData, setFormData] = useState({
+    station_id: '',
+    source_id_code: '',
+    source_type: 'BOREWELL',
+    capacity: '',
+    areas_supplied: '',
+    population_served: '',
+    storage_tank: '',
+    treatment_facility: '',
+    disinfection_method: 'CHLORINATION',
+    disinfection_frequency_days: '30',
+    gps_lat: '',
+    gps_long: ''
+  });
+
+  const fetchData = async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const [wsRes, stnRes, divRes, zoneRes] = await Promise.all([
+        axios.get(`${API_URL}/hierarchy/water-sources/`),
+        axios.get(`${API_URL}/hierarchy/stations/`),
+        axios.get(`${API_URL}/hierarchy/divisions/`),
+        axios.get(`${API_URL}/hierarchy/zones/`),
+      ]);
+
+      setSources(wsRes.data || []);
+      setStations(stnRes.data || []);
+      setDivisions(divRes.data || []);
+      setZones(zoneRes.data || []);
+    } catch (err: any) {
+      console.error('Failed to load water sources data:', err);
+      setError(err?.response?.data?.detail || err?.message || 'Failed to fetch water sources');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchData();
+  }, []);
+
+  // Lookups
+  const stationMap = useMemo(() => {
+    const map = new Map<number, Station>();
+    stations.forEach(s => map.set(s.id, s));
+    return map;
+  }, [stations]);
+
+  const divisionMap = useMemo(() => {
+    const map = new Map<number, Division>();
+    divisions.forEach(d => map.set(d.id, d));
+    return map;
+  }, [divisions]);
+
+  const zoneMap = useMemo(() => {
+    const map = new Map<number, Zone>();
+    zones.forEach(z => map.set(z.id, z));
+    return map;
+  }, [zones]);
+
+  const filteredDivisionsList = useMemo(() => {
+    if (selectedZone === 'ALL') return divisions;
+    const zId = parseInt(selectedZone, 10);
+    return divisions.filter(d => d.zone_id === zId);
+  }, [divisions, selectedZone]);
+
+  // Filter sources
+  const filteredSources = useMemo(() => {
+    return sources.filter(src => {
+      const station = stationMap.get(src.station_id);
+      const division = station ? divisionMap.get(station.division_id) : undefined;
+      const zone = division ? zoneMap.get(division.zone_id) : undefined;
+
+      // Search (Source ID, Station Name)
+      if (searchTerm) {
+        const term = searchTerm.toLowerCase();
+        const matchesCode = src.source_id_code?.toLowerCase().includes(term);
+        const matchesStation = station?.name?.toLowerCase().includes(term) || station?.code?.toLowerCase().includes(term);
+        if (!matchesCode && !matchesStation) return false;
+      }
+
+      // Zone filter
+      if (selectedZone !== 'ALL') {
+        const zId = parseInt(selectedZone, 10);
+        if (!zone || zone.id !== zId) return false;
+      }
+
+      // Division filter
+      if (selectedDivision !== 'ALL') {
+        const dId = parseInt(selectedDivision, 10);
+        if (!station || station.division_id !== dId) return false;
+      }
+
+      // Source Type filter
+      if (selectedType !== 'ALL') {
+        if (src.source_type !== selectedType) return false;
+      }
+
+      // Status filter
+      if (selectedStatus !== 'ALL') {
+        if (src.current_status !== selectedStatus) return false;
+      }
+
+      return true;
+    });
+  }, [sources, searchTerm, selectedZone, selectedDivision, selectedType, selectedStatus, stationMap, divisionMap, zoneMap]);
+
+  // Pagination
+  const totalPages = Math.max(1, Math.ceil(filteredSources.length / pageSize));
+  const paginatedSources = useMemo(() => {
+    const start = (currentPage - 1) * pageSize;
+    return filteredSources.slice(start, start + pageSize);
+  }, [filteredSources, currentPage]);
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchTerm, selectedZone, selectedDivision, selectedType, selectedStatus]);
+
+  const getStatusBadge = (status: string) => {
+    switch (status) {
+      case 'COMPLIANT':
+        return { label: 'COMPLIANT', color: '#16a34a', bg: '#f0fdf4', border: '#bbf7d0' };
+      case 'DUE':
+        return { label: 'DUE', color: '#d97706', bg: '#fffbeb', border: '#fde68a' };
+      case 'OVERDUE':
+        return { label: 'OVERDUE', color: '#ea580c', bg: '#fff7ed', border: '#fdba74' };
+      case 'UNFIT':
+        return { label: 'UNFIT', color: '#dc2626', bg: '#fef2f2', border: '#fecaca' };
+      case 'PERSISTENT_FAILURE':
+        return { label: 'PERSISTENT FAILURE', color: '#991b1b', bg: '#fef2f2', border: '#fca5a5' };
+      default:
+        return { label: status || 'UNKNOWN', color: '#475569', bg: '#f1f5f9', border: '#cbd5e1' };
+    }
+  };
+
+  const handleCreateSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setModalError(null);
+    setModalSuccess(null);
+
+    if (!formData.station_id) {
+      setModalError('Please select a station.');
+      return;
+    }
+    if (!formData.source_id_code.trim()) {
+      setModalError('Please provide a unique Source ID code.');
+      return;
+    }
+
+    setModalSubmitting(true);
+    try {
+      const payload: any = {
+        station_id: parseInt(formData.station_id, 10),
+        source_id_code: formData.source_id_code.trim().toUpperCase(),
+        source_type: formData.source_type,
+        capacity: formData.capacity.trim() || undefined,
+        areas_supplied: formData.areas_supplied.trim() || undefined,
+        population_served: formData.population_served ? parseInt(formData.population_served, 10) : undefined,
+        storage_tank: formData.storage_tank.trim() || undefined,
+        treatment_facility: formData.treatment_facility.trim() || undefined,
+        disinfection_method: formData.disinfection_method,
+        disinfection_frequency_days: parseInt(formData.disinfection_frequency_days, 10) || 30,
+        gps_lat: formData.gps_lat ? parseFloat(formData.gps_lat) : undefined,
+        gps_long: formData.gps_long ? parseFloat(formData.gps_long) : undefined,
+      };
+
+      await axios.post(`${API_URL}/hierarchy/water-sources/`, payload);
+      setModalSuccess('Water source created successfully!');
+      
+      // Refresh list
+      await fetchData();
+
+      setTimeout(() => {
+        setIsModalOpen(false);
+        setModalSuccess(null);
+        setFormData({
+          station_id: '',
+          source_id_code: '',
+          source_type: 'BOREWELL',
+          capacity: '',
+          areas_supplied: '',
+          population_served: '',
+          storage_tank: '',
+          treatment_facility: '',
+          disinfection_method: 'CHLORINATION',
+          disinfection_frequency_days: '30',
+          gps_lat: '',
+          gps_long: ''
+        });
+      }, 1000);
+    } catch (err: any) {
+      console.error('Failed to create water source', err);
+      setModalError(err?.response?.data?.detail || err?.message || 'Failed to create water source. Please check data.');
+    } finally {
+      setModalSubmitting(false);
+    }
+  };
+
+  return (
+    <div style={{ height: '100%', overflowY: 'auto', background: '#f8fafc', padding: '24px 28px' }}>
+      <div style={{ maxWidth: 1400, margin: '0 auto', display: 'flex', flexDirection: 'column', gap: 20 }}>
+        
+        {/* Header */}
+        <div style={{
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          flexWrap: 'wrap',
+          gap: 16,
+          background: '#ffffff',
+          padding: '20px 24px',
+          borderRadius: 12,
+          border: '1px solid #e2e8f0',
+          boxShadow: '0 1px 3px rgba(0,0,0,0.04)'
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+            <div style={{
+              background: 'linear-gradient(135deg, #0284c7, #0369a1)',
+              padding: 12,
+              borderRadius: 12,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              boxShadow: '0 4px 10px rgba(2,132,199,0.2)'
+            }}>
+              <Droplets size={24} color="#ffffff" />
+            </div>
+            <div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <h1 style={{ fontSize: 22, fontWeight: 800, color: '#0f172a', margin: 0 }}>
+                  Water Source Registry
+                </h1>
+                <span style={{
+                  fontSize: 12,
+                  fontWeight: 700,
+                  padding: '2px 8px',
+                  borderRadius: 12,
+                  background: '#eff6ff',
+                  color: '#1d4ed8',
+                  border: '1px solid #bfdbfe'
+                }}>
+                  {filteredSources.length} Registered Sources
+                </span>
+              </div>
+              <p style={{ fontSize: 13, color: '#64748b', margin: '4px 0 0 0' }}>
+                Complete inventory of Indian Railways borewells, filtration plants, storage reservoirs, and distribution taps
+              </p>
+            </div>
+          </div>
+
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            <button
+              onClick={() => setIsModalOpen(true)}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: 6,
+                padding: '9px 16px',
+                background: '#1e3a8a',
+                color: '#ffffff',
+                border: 'none',
+                borderRadius: 8,
+                fontSize: 13,
+                fontWeight: 700,
+                cursor: 'pointer',
+                boxShadow: '0 2px 6px rgba(30,58,138,0.25)'
+              }}
+            >
+              <Plus size={16} />
+              New Water Source
+            </button>
+
+            <button
+              onClick={fetchData}
+              disabled={loading}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: 6,
+                padding: '9px 14px',
+                background: '#ffffff',
+                border: '1px solid #cbd5e1',
+                borderRadius: 8,
+                fontSize: 13,
+                fontWeight: 600,
+                color: '#334155',
+                cursor: loading ? 'not-allowed' : 'pointer'
+              }}
+            >
+              <RefreshCw size={15} className={loading ? 'animate-spin' : ''} />
+              Refresh
+            </button>
+          </div>
+        </div>
+
+        {/* Filters */}
+        <div style={{
+          background: '#ffffff',
+          padding: '16px 20px',
+          borderRadius: 12,
+          border: '1px solid #e2e8f0',
+          boxShadow: '0 1px 3px rgba(0,0,0,0.03)',
+          display: 'grid',
+          gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
+          gap: 12
+        }}>
+          {/* Search */}
+          <div style={{ position: 'relative' }}>
+            <Search size={16} color="#94a3b8" style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)' }} />
+            <input
+              type="text"
+              placeholder="Search Source ID or Station..."
+              value={searchTerm}
+              onChange={e => setSearchTerm(e.target.value)}
+              style={{
+                width: '100%',
+                padding: '8px 12px 8px 36px',
+                border: '1px solid #cbd5e1',
+                borderRadius: 8,
+                fontSize: 13.5,
+                outline: 'none',
+                background: '#f8fafc',
+                color: '#0f172a'
+              }}
+            />
+          </div>
+
+          {/* Zone */}
+          <select
+            value={selectedZone}
+            onChange={e => {
+              setSelectedZone(e.target.value);
+              setSelectedDivision('ALL');
+            }}
+            style={{
+              padding: '8px 12px',
+              border: '1px solid #cbd5e1',
+              borderRadius: 8,
+              fontSize: 13,
+              background: '#f8fafc',
+              color: '#0f172a'
+            }}
+          >
+            <option value="ALL">All Zones ({zones.length})</option>
+            {zones.map(z => (
+              <option key={z.id} value={z.id}>{z.code} - {z.name}</option>
+            ))}
+          </select>
+
+          {/* Division */}
+          <select
+            value={selectedDivision}
+            onChange={e => setSelectedDivision(e.target.value)}
+            style={{
+              padding: '8px 12px',
+              border: '1px solid #cbd5e1',
+              borderRadius: 8,
+              fontSize: 13,
+              background: '#f8fafc',
+              color: '#0f172a'
+            }}
+          >
+            <option value="ALL">All Divisions ({filteredDivisionsList.length})</option>
+            {filteredDivisionsList.map(d => (
+              <option key={d.id} value={d.id}>{d.code} - {d.name}</option>
+            ))}
+          </select>
+
+          {/* Type */}
+          <select
+            value={selectedType}
+            onChange={e => setSelectedType(e.target.value)}
+            style={{
+              padding: '8px 12px',
+              border: '1px solid #cbd5e1',
+              borderRadius: 8,
+              fontSize: 13,
+              background: '#f8fafc',
+              color: '#0f172a'
+            }}
+          >
+            <option value="ALL">All Source Types</option>
+            {SOURCE_TYPES.map(t => (
+              <option key={t} value={t}>{t}</option>
+            ))}
+          </select>
+
+          {/* Status */}
+          <select
+            value={selectedStatus}
+            onChange={e => setSelectedStatus(e.target.value)}
+            style={{
+              padding: '8px 12px',
+              border: '1px solid #cbd5e1',
+              borderRadius: 8,
+              fontSize: 13,
+              background: '#f8fafc',
+              color: '#0f172a'
+            }}
+          >
+            <option value="ALL">All Statuses</option>
+            <option value="COMPLIANT">COMPLIANT</option>
+            <option value="DUE">DUE</option>
+            <option value="OVERDUE">OVERDUE</option>
+            <option value="UNFIT">UNFIT</option>
+            <option value="PERSISTENT_FAILURE">PERSISTENT FAILURE</option>
+          </select>
+        </div>
+
+        {/* Content */}
+        {loading ? (
+          <div style={{
+            background: '#ffffff',
+            borderRadius: 12,
+            border: '1px solid #e2e8f0',
+            padding: '60px 20px',
+            textAlign: 'center'
+          }}>
+            <div style={{
+              width: 36,
+              height: 36,
+              border: '3px solid #cbd5e1',
+              borderTopColor: '#0284c7',
+              borderRadius: '50%',
+              margin: '0 auto 16px auto',
+              animation: 'spin 0.8s linear infinite'
+            }} />
+            <p style={{ color: '#64748b', fontSize: 14 }}>Loading water sources...</p>
+          </div>
+        ) : error ? (
+          <div style={{
+            background: '#fef2f2',
+            border: '1px solid #fecaca',
+            borderRadius: 12,
+            padding: 24,
+            textAlign: 'center'
+          }}>
+            <AlertCircle size={32} color="#dc2626" style={{ margin: '0 auto 10px auto' }} />
+            <h3 style={{ fontSize: 16, fontWeight: 700, color: '#991b1b', margin: '0 0 6px 0' }}>Error Loading Registry</h3>
+            <p style={{ fontSize: 13, color: '#b91c1c', margin: '0 0 16px 0' }}>{error}</p>
+            <button
+              onClick={fetchData}
+              style={{
+                padding: '8px 16px',
+                background: '#dc2626',
+                color: 'white',
+                border: 'none',
+                borderRadius: 6,
+                fontWeight: 600,
+                fontSize: 13,
+                cursor: 'pointer'
+              }}
+            >
+              Retry
+            </button>
+          </div>
+        ) : filteredSources.length === 0 ? (
+          <div style={{
+            background: '#ffffff',
+            borderRadius: 12,
+            border: '1px solid #e2e8f0',
+            padding: '60px 20px',
+            textAlign: 'center'
+          }}>
+            <Droplets size={36} color="#94a3b8" style={{ margin: '0 auto 12px auto' }} />
+            <h3 style={{ fontSize: 16, fontWeight: 700, color: '#1e293b', margin: '0 0 4px 0' }}>No Water Sources Found</h3>
+            <p style={{ fontSize: 13, color: '#64748b', margin: 0 }}>
+              No water sources matched your criteria. Try adjusting filters or click "New Water Source" to add one.
+            </p>
+          </div>
+        ) : (
+          <div style={{
+            background: '#ffffff',
+            borderRadius: 12,
+            border: '1px solid #e2e8f0',
+            overflow: 'hidden',
+            boxShadow: '0 1px 3px rgba(0,0,0,0.03)'
+          }}>
+            <div style={{ overflowX: 'auto' }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: 13 }}>
+                <thead>
+                  <tr style={{ background: '#f8fafc', borderBottom: '1px solid #e2e8f0' }}>
+                    <th style={{ padding: '12px 16px', fontWeight: 700, color: '#475569', fontSize: 12, textTransform: 'uppercase' }}>Source ID</th>
+                    <th style={{ padding: '12px 16px', fontWeight: 700, color: '#475569', fontSize: 12, textTransform: 'uppercase' }}>Station</th>
+                    <th style={{ padding: '12px 16px', fontWeight: 700, color: '#475569', fontSize: 12, textTransform: 'uppercase' }}>Division</th>
+                    <th style={{ padding: '12px 16px', fontWeight: 700, color: '#475569', fontSize: 12, textTransform: 'uppercase' }}>Zone</th>
+                    <th style={{ padding: '12px 16px', fontWeight: 700, color: '#475569', fontSize: 12, textTransform: 'uppercase' }}>Type</th>
+                    <th style={{ padding: '12px 16px', fontWeight: 700, color: '#475569', fontSize: 12, textTransform: 'uppercase' }}>Capacity</th>
+                    <th style={{ padding: '12px 16px', fontWeight: 700, color: '#475569', fontSize: 12, textTransform: 'uppercase' }}>Disinfection</th>
+                    <th style={{ padding: '12px 16px', fontWeight: 700, color: '#475569', fontSize: 12, textTransform: 'uppercase' }}>Last Sample</th>
+                    <th style={{ padding: '12px 16px', fontWeight: 700, color: '#475569', fontSize: 12, textTransform: 'uppercase' }}>Current Status</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {paginatedSources.map(src => {
+                    const stn = stationMap.get(src.station_id);
+                    const div = stn ? divisionMap.get(stn.division_id) : undefined;
+                    const zone = div ? zoneMap.get(div.zone_id) : undefined;
+                    const badge = getStatusBadge(src.current_status);
+
+                    const lastDate = src.last_bacteriological_sample_date || src.last_chemical_sample_date;
+
+                    return (
+                      <tr key={src.id} style={{ borderBottom: '1px solid #f1f5f9' }}>
+                        <td style={{ padding: '12px 16px' }}>
+                          <span style={{
+                            fontFamily: 'monospace',
+                            fontWeight: 800,
+                            color: '#0369a1',
+                            background: '#f0f9ff',
+                            padding: '3px 8px',
+                            borderRadius: 6,
+                            border: '1px solid #bae6fd'
+                          }}>
+                            {src.source_id_code}
+                          </span>
+                        </td>
+                        <td style={{ padding: '12px 16px', fontWeight: 600, color: '#0f172a' }}>
+                          {stn?.name || '—'} ({stn?.code || '—'})
+                        </td>
+                        <td style={{ padding: '12px 16px', color: '#334155' }}>
+                          {div?.name || '—'}
+                        </td>
+                        <td style={{ padding: '12px 16px', color: '#334155' }}>
+                          {zone?.code || '—'}
+                        </td>
+                        <td style={{ padding: '12px 16px' }}>
+                          <span style={{ fontSize: 12, fontWeight: 600, color: '#475569' }}>
+                            {src.source_type}
+                          </span>
+                        </td>
+                        <td style={{ padding: '12px 16px', color: '#64748b' }}>
+                          {src.capacity || '—'}
+                        </td>
+                        <td style={{ padding: '12px 16px' }}>
+                          <div style={{ display: 'flex', flexDirection: 'column' }}>
+                            <span style={{ fontSize: 12, fontWeight: 600, color: '#0f172a' }}>
+                              {src.disinfection_method || 'CHLORINATION'}
+                            </span>
+                            {src.residual_chlorine_last !== null && src.residual_chlorine_last !== undefined && (
+                              <span style={{ fontSize: 11, color: '#16a34a', fontWeight: 700 }}>
+                                {src.residual_chlorine_last} ppm
+                              </span>
+                            )}
+                          </div>
+                        </td>
+                        <td style={{ padding: '12px 16px', color: '#64748b', fontSize: 12.5 }}>
+                          {lastDate ? new Date(lastDate).toLocaleDateString('en-IN') : <span style={{ color: '#cbd5e1' }}>Never</span>}
+                        </td>
+                        <td style={{ padding: '12px 16px' }}>
+                          <span style={{
+                            fontSize: 11,
+                            fontWeight: 800,
+                            padding: '3px 9px',
+                            borderRadius: 6,
+                            color: badge.color,
+                            background: badge.bg,
+                            border: `1px solid ${badge.border}`,
+                            letterSpacing: '0.04em',
+                            whiteSpace: 'nowrap'
+                          }}>
+                            {badge.label}
+                          </span>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+
+            {/* Pagination footer */}
+            <div style={{
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              padding: '14px 20px',
+              borderTop: '1px solid #e2e8f0',
+              background: '#f8fafc',
+              fontSize: 13,
+              color: '#64748b',
+              flexWrap: 'wrap',
+              gap: 12
+            }}>
+              <div>
+                Showing <strong style={{ color: '#0f172a' }}>{(currentPage - 1) * pageSize + 1}</strong> to{' '}
+                <strong style={{ color: '#0f172a' }}>{Math.min(currentPage * pageSize, filteredSources.length)}</strong> of{' '}
+                <strong style={{ color: '#0f172a' }}>{filteredSources.length}</strong> sources
+              </div>
+
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                <button
+                  onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                  disabled={currentPage === 1}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 4,
+                    padding: '6px 12px',
+                    borderRadius: 6,
+                    border: '1px solid #cbd5e1',
+                    background: '#ffffff',
+                    fontSize: 12.5,
+                    fontWeight: 600,
+                    color: currentPage === 1 ? '#94a3b8' : '#334155',
+                    cursor: currentPage === 1 ? 'not-allowed' : 'pointer'
+                  }}
+                >
+                  <ChevronLeft size={14} />
+                  Previous
+                </button>
+
+                <span style={{ padding: '0 8px', fontSize: 12.5, fontWeight: 700, color: '#0f172a' }}>
+                  Page {currentPage} of {totalPages}
+                </span>
+
+                <button
+                  onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                  disabled={currentPage === totalPages}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 4,
+                    padding: '6px 12px',
+                    borderRadius: 6,
+                    border: '1px solid #cbd5e1',
+                    background: '#ffffff',
+                    fontSize: 12.5,
+                    fontWeight: 600,
+                    color: currentPage === totalPages ? '#94a3b8' : '#334155',
+                    cursor: currentPage === totalPages ? 'not-allowed' : 'pointer'
+                  }}
+                >
+                  Next
+                  <ChevronRight size={14} />
+                </button>
+              </div>
+            </div>
+
+          </div>
+        )}
+
+      </div>
+
+      {/* New Water Source Modal */}
+      {isModalOpen && (
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          background: 'rgba(15, 23, 42, 0.65)',
+          backdropFilter: 'blur(4px)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 100,
+          padding: 20
+        }}>
+          <div style={{
+            background: '#ffffff',
+            borderRadius: 14,
+            width: '100%',
+            maxWidth: 680,
+            maxHeight: '90vh',
+            display: 'flex',
+            flexDirection: 'column',
+            boxShadow: '0 20px 25px -5px rgba(0,0,0,0.2), 0 10px 10px -5px rgba(0,0,0,0.1)',
+            overflow: 'hidden'
+          }}>
+            {/* Modal Header */}
+            <div style={{
+              padding: '18px 24px',
+              borderBottom: '1px solid #e2e8f0',
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              background: '#0f172a',
+              color: '#ffffff'
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                <Droplets size={20} color="#38bdf8" />
+                <h3 style={{ margin: 0, fontSize: 17, fontWeight: 700 }}>Register New Water Source</h3>
+              </div>
+              <button
+                onClick={() => setIsModalOpen(false)}
+                style={{ background: 'transparent', border: 'none', color: '#94a3b8', cursor: 'pointer', padding: 4 }}
+              >
+                <X size={20} />
+              </button>
+            </div>
+
+            {/* Modal Body */}
+            <form onSubmit={handleCreateSubmit} style={{ padding: '24px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 16 }}>
+              {modalError && (
+                <div style={{ background: '#fef2f2', border: '1px solid #fecaca', borderRadius: 8, padding: '10px 14px', color: '#991b1b', fontSize: 13, display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <AlertCircle size={16} color="#dc2626" />
+                  {modalError}
+                </div>
+              )}
+
+              {modalSuccess && (
+                <div style={{ background: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: 8, padding: '10px 14px', color: '#166534', fontSize: 13, display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <CheckCircle size={16} color="#16a34a" />
+                  {modalSuccess}
+                </div>
+              )}
+
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+                <div>
+                  <label style={{ display: 'block', fontSize: 12.5, fontWeight: 700, color: '#334155', marginBottom: 6 }}>
+                    Station *
+                  </label>
+                  <select
+                    required
+                    value={formData.station_id}
+                    onChange={e => setFormData({ ...formData, station_id: e.target.value })}
+                    style={{ width: '100%', padding: '8px 12px', border: '1px solid #cbd5e1', borderRadius: 8, fontSize: 13 }}
+                  >
+                    <option value="">Select Railway Station</option>
+                    {stations.map(stn => (
+                      <option key={stn.id} value={stn.id}>{stn.code} — {stn.name}</option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label style={{ display: 'block', fontSize: 12.5, fontWeight: 700, color: '#334155', marginBottom: 6 }}>
+                    Source ID Code * (e.g. MAS-BW-01)
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="e.g. NDLS-BW-01"
+                    value={formData.source_id_code}
+                    onChange={e => setFormData({ ...formData, source_id_code: e.target.value })}
+                    style={{ width: '100%', padding: '8px 12px', border: '1px solid #cbd5e1', borderRadius: 8, fontSize: 13 }}
+                  />
+                </div>
+              </div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+                <div>
+                  <label style={{ display: 'block', fontSize: 12.5, fontWeight: 700, color: '#334155', marginBottom: 6 }}>
+                    Source Type
+                  </label>
+                  <select
+                    value={formData.source_type}
+                    onChange={e => setFormData({ ...formData, source_type: e.target.value })}
+                    style={{ width: '100%', padding: '8px 12px', border: '1px solid #cbd5e1', borderRadius: 8, fontSize: 13 }}
+                  >
+                    {SOURCE_TYPES.map(t => (
+                      <option key={t} value={t}>{t}</option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label style={{ display: 'block', fontSize: 12.5, fontWeight: 700, color: '#334155', marginBottom: 6 }}>
+                    Design / Pumping Capacity
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="e.g. 50,000 Litres/Day"
+                    value={formData.capacity}
+                    onChange={e => setFormData({ ...formData, capacity: e.target.value })}
+                    style={{ width: '100%', padding: '8px 12px', border: '1px solid #cbd5e1', borderRadius: 8, fontSize: 13 }}
+                  />
+                </div>
+              </div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+                <div>
+                  <label style={{ display: 'block', fontSize: 12.5, fontWeight: 700, color: '#334155', marginBottom: 6 }}>
+                    Areas Supplied
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="e.g. Platform 1-4 & Waiting Halls"
+                    value={formData.areas_supplied}
+                    onChange={e => setFormData({ ...formData, areas_supplied: e.target.value })}
+                    style={{ width: '100%', padding: '8px 12px', border: '1px solid #cbd5e1', borderRadius: 8, fontSize: 13 }}
+                  />
+                </div>
+
+                <div>
+                  <label style={{ display: 'block', fontSize: 12.5, fontWeight: 700, color: '#334155', marginBottom: 6 }}>
+                    Population Served
+                  </label>
+                  <input
+                    type="number"
+                    placeholder="e.g. 15000"
+                    value={formData.population_served}
+                    onChange={e => setFormData({ ...formData, population_served: e.target.value })}
+                    style={{ width: '100%', padding: '8px 12px', border: '1px solid #cbd5e1', borderRadius: 8, fontSize: 13 }}
+                  />
+                </div>
+              </div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+                <div>
+                  <label style={{ display: 'block', fontSize: 12.5, fontWeight: 700, color: '#334155', marginBottom: 6 }}>
+                    Disinfection Method
+                  </label>
+                  <select
+                    value={formData.disinfection_method}
+                    onChange={e => setFormData({ ...formData, disinfection_method: e.target.value })}
+                    style={{ width: '100%', padding: '8px 12px', border: '1px solid #cbd5e1', borderRadius: 8, fontSize: 13 }}
+                  >
+                    {DISINFECTION_METHODS.map(m => (
+                      <option key={m} value={m}>{m}</option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label style={{ display: 'block', fontSize: 12.5, fontWeight: 700, color: '#334155', marginBottom: 6 }}>
+                    Disinfection Frequency (Days)
+                  </label>
+                  <input
+                    type="number"
+                    value={formData.disinfection_frequency_days}
+                    onChange={e => setFormData({ ...formData, disinfection_frequency_days: e.target.value })}
+                    style={{ width: '100%', padding: '8px 12px', border: '1px solid #cbd5e1', borderRadius: 8, fontSize: 13 }}
+                  />
+                </div>
+              </div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+                <div>
+                  <label style={{ display: 'block', fontSize: 12.5, fontWeight: 700, color: '#334155', marginBottom: 6 }}>
+                    GPS Latitude (Optional)
+                  </label>
+                  <input
+                    type="number"
+                    step="0.000001"
+                    placeholder="e.g. 28.6139"
+                    value={formData.gps_lat}
+                    onChange={e => setFormData({ ...formData, gps_lat: e.target.value })}
+                    style={{ width: '100%', padding: '8px 12px', border: '1px solid #cbd5e1', borderRadius: 8, fontSize: 13 }}
+                  />
+                </div>
+
+                <div>
+                  <label style={{ display: 'block', fontSize: 12.5, fontWeight: 700, color: '#334155', marginBottom: 6 }}>
+                    GPS Longitude (Optional)
+                  </label>
+                  <input
+                    type="number"
+                    step="0.000001"
+                    placeholder="e.g. 77.2090"
+                    value={formData.gps_long}
+                    onChange={e => setFormData({ ...formData, gps_long: e.target.value })}
+                    style={{ width: '100%', padding: '8px 12px', border: '1px solid #cbd5e1', borderRadius: 8, fontSize: 13 }}
+                  />
+                </div>
+              </div>
+
+              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 12, marginTop: 12, paddingTop: 16, borderTop: '1px solid #e2e8f0' }}>
+                <button
+                  type="button"
+                  onClick={() => setIsModalOpen(false)}
+                  style={{
+                    padding: '9px 16px',
+                    borderRadius: 8,
+                    border: '1px solid #cbd5e1',
+                    background: '#ffffff',
+                    color: '#475569',
+                    fontSize: 13,
+                    fontWeight: 600,
+                    cursor: 'pointer'
+                  }}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={modalSubmitting}
+                  style={{
+                    padding: '9px 20px',
+                    borderRadius: 8,
+                    border: 'none',
+                    background: '#1e3a8a',
+                    color: '#ffffff',
+                    fontSize: 13,
+                    fontWeight: 700,
+                    cursor: modalSubmitting ? 'not-allowed' : 'pointer'
+                  }}
+                >
+                  {modalSubmitting ? 'Saving...' : 'Register Water Source'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+    </div>
+  );
+}

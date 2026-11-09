@@ -1,8 +1,16 @@
+import React from 'react'
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { AuthProvider, useAuth } from './context/AuthContext'
 import { Layout } from './components/Layout'
 import { Login } from './pages/Login'
 import { Dashboard } from './pages/Dashboard'
+import Stations from './pages/Stations'
+import StationProfile from './pages/StationProfile'
+import WaterSources from './pages/WaterSources'
+import SamplingManagement from './pages/SamplingManagement'
+import DisinfectionManagement from './pages/DisinfectionManagement'
+import Escalations from './pages/Escalations'
+import Analytics from './pages/Analytics'
 import { MasterData } from './pages/MasterData'
 import { HealthCard } from './pages/HealthCard'
 import LabResultEntry from './pages/LabResultEntry'
@@ -56,18 +64,31 @@ function AppRoutes() {
       } />
 
       <Route path="/" element={<ProtectedRoute><Layout /></ProtectedRoute>}>
+        {/* Core & Surveillance */}
         <Route index element={<Dashboard />} />
-        <Route path="users" element={<RoleGuard allowedRoles={['CENTRAL_ADMIN']}><UserManagement /></RoleGuard>} />
-        <Route path="master-data" element={<MasterData />} />
-        <Route path="healthcard" element={<HealthCard />} />
+        <Route path="gis" element={<GISMap />} />
+        <Route path="stations" element={<Stations />} />
+        <Route path="stations/:id" element={<StationProfile />} />
+        <Route path="water-sources" element={<WaterSources />} />
+
+        {/* Quality & Operations */}
+        <Route path="sampling" element={<SamplingManagement />} />
         <Route path="lab/result-entry" element={<LabResultEntry />} />
+        <Route path="disinfection" element={<DisinfectionManagement />} />
         <Route path="alerts" element={<AlertCentre />} />
         <Route path="alerts/:id" element={<AlertDetail />} />
         <Route path="corrective-actions" element={<CorrectiveActions />} />
+        <Route path="escalations" element={<Escalations />} />
+
+        {/* Analytics & Governance */}
+        <Route path="analytics" element={<Analytics />} />
+        <Route path="reports" element={<Reports />} />
+        <Route path="healthcard" element={<HealthCard />} />
         <Route path="notifications" element={<Notifications />} />
         <Route path="audit" element={<AuditTrail />} />
-        <Route path="gis" element={<GISMap />} />
-        <Route path="reports" element={<Reports />} />
+        <Route path="master-data" element={<MasterData />} />
+        <Route path="users" element={<RoleGuard allowedRoles={['CENTRAL_ADMIN']}><UserManagement /></RoleGuard>} />
+
         <Route path="*" element={<Navigate to="/" replace />} />
       </Route>
     </Routes>
