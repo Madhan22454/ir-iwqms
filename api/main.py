@@ -4,6 +4,12 @@ Indian Railways Integrated Water Quality Monitoring & Surveillance System
 """
 import sys
 import os
+
+# Ensure api directory is always on sys.path for Vercel serverless environment
+current_dir = os.path.dirname(os.path.abspath(__file__))
+if current_dir not in sys.path:
+    sys.path.insert(0, current_dir)
+
 import logging
 
 logging.basicConfig(
@@ -137,15 +143,25 @@ def auth_status():
     try:
         from database import SessionLocal
         from models.user import User
+        from core.security import verify_password
 
         db = SessionLocal()
         users_list = db.query(User).all()
         result["database"] = "connected"
         result["user_count"] = len(users_list)
+        
+        central_admin = next((u for u in users_list if u.employee_id == "central.admin"), None)
+        result["central_admin_status"] = {
+            "exists": central_admin is not None,
+            "is_active": central_admin.is_active if central_admin else False,
+            "role": str(central_admin.role) if central_admin else None,
+            "password_valid_for_admin123": verify_password("admin123", central_admin.hashed_password) if central_admin else False,
+        }
+        
         result["demo_users"] = [
             {
                 "employee_id": u.employee_id,
-                "role": u.role,
+                "role": str(u.role),
                 "is_active": u.is_active,
             }
             for u in users_list[:10]  # Return at most 10 for diagnosis

@@ -12,6 +12,12 @@ logger = logging.getLogger(__name__)
 
 db_url = settings.DATABASE_URL.strip()
 
+# Automatically normalize postgres URLs to use pg8000 dialect
+if db_url.startswith("postgres://"):
+    db_url = "postgresql+pg8000://" + db_url[len("postgres://"):]
+elif db_url.startswith("postgresql://") and "+pg8000" not in db_url and "+psycopg2" not in db_url:
+    db_url = "postgresql+pg8000://" + db_url[len("postgresql://"):]
+
 if db_url.startswith("sqlite"):
     # Local development — SQLite
     engine = create_engine(

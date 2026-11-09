@@ -18,8 +18,16 @@ export function Login() {
     try {
       await login(employeeId, password);
       navigate('/');
-    } catch {
-      setError('Invalid Employee ID or password. Please try again.');
+    } catch (err: any) {
+      if (err.response?.status === 400) {
+        setError(err.response?.data?.detail || 'Invalid Employee ID or password. Please try again.');
+      } else if (err.response?.status >= 500) {
+        setError('Production data service error. The server encountered an issue.');
+      } else if (err.code === 'ERR_NETWORK' || !err.response) {
+        setError('Unable to reach authentication server. Please check your network connection.');
+      } else {
+        setError(err.response?.data?.detail || 'Authentication failed. Please try again.');
+      }
     } finally {
       setLoading(false);
     }
