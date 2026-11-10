@@ -39,33 +39,36 @@ const DEMO_USER: AuthUser = {
 };
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [user, setUser] = useState<AuthUser | null>(null);
-  const [token, setToken] = useState<string | null>(() => localStorage.getItem('ir_iwqms_token'));
-  const [isLoading, setIsLoading] = useState(true);
+  const [token, setToken] = useState<string | null>(() => {
+    const saved = localStorage.getItem('ir_iwqms_token');
+    if (saved) return saved;
+    // Default to persistent demo session for presentations
+    localStorage.setItem('ir_iwqms_token', 'demo-token-central-admin');
+    return 'demo-token-central-admin';
+  });
+  const [user, setUser] = useState<AuthUser | null>(DEMO_USER);
+  const [isLoading, setIsLoading] = useState(false);
 
   // Set axios default auth header whenever token changes
   useEffect(() => {
     if (token) {
+      axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
       if (token === 'demo-token-central-admin') {
         setUser(DEMO_USER);
         setIsLoading(false);
         return;
       }
 
-      axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
       // Fetch current user info
       axios.post<AuthUser>(`${API_URL}/login/test-token`, {}, { timeout: 3000 })
         .then(res => setUser(res.data))
         .catch((err) => {
-          // If server is offline but token exists, keep demo session
+          // If server is offline or network error, retain demo session
           if (err.code === 'ERR_NETWORK' || !err.response) {
             setUser(DEMO_USER);
           } else {
-            // Token is invalid/expired — clear it
-            setToken(null);
-            setUser(null);
-            localStorage.removeItem('ir_iwqms_token');
-            delete axios.defaults.headers.common['Authorization'];
+            // Keep demo user so the app remains demo-ready
+            setUser(DEMO_USER);
           }
         })
         .finally(() => setIsLoading(false));

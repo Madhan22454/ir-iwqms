@@ -33,16 +33,14 @@ jobs:
         with:
           node-version: 20
           cache: 'npm'
-          cache-dependency-path: './frontend/package-lock.json'
+          cache-dependency-path: './package-lock.json'
 
       - name: Install dependencies
-        working-directory: ./frontend
         run: npm ci
 
       - name: Build
-        working-directory: ./frontend
         env:
-          VITE_API_BASE_URL: "https://ir-iwqms.vercel.app/api/v1"
+          VITE_API_BASE_URL: "/api/v1"
         run: npm run build
 
       - name: Setup Pages
@@ -51,8 +49,7 @@ jobs:
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:
-          # Upload the dist folder inside the frontend directory
-          path: './frontend/dist'
+          path: './dist'
 
       - name: Deploy to GitHub Pages
         id: deployment

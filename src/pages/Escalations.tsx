@@ -13,6 +13,7 @@ import {
   Sliders
 } from 'lucide-react';
 import { API_URL } from '../config/api';
+import { DEMO_ALERTS } from '../data/mockDemoData';
 
 interface AlertItem {
   id: number;
@@ -66,19 +67,48 @@ export default function Escalations() {
     setLoading(true);
     setError(null);
     try {
-      const [alertsRes, rulesRes] = await Promise.all([
+      const [alertsRes, rulesRes] = await Promise.allSettled([
         axios.get(`${API_URL}/alerts/?limit=300`),
         axios.get(`${API_URL}/workflow/escalation-rules/`),
       ]);
 
-      const allAlerts: AlertItem[] = alertsRes.data || [];
-      // Filter alerts that have been escalated or are in ESCALATED status
-      const escalatedAlerts = allAlerts.filter(a => a.is_escalated || a.status === 'ESCALATED' || (a.escalation_level && a.escalation_level > 0));
-      setAlerts(escalatedAlerts);
-      setRules(rulesRes.data || []);
-    } catch (err: any) {
-      console.error('Failed to load escalations data', err);
-      setError(err?.response?.data?.detail || err?.message || 'Failed to load escalations');
+      const hasLiveAlerts = alertsRes.status === 'fulfilled' && alertsRes.value.data?.length > 0;
+      if (hasLiveAlerts) {
+        const allAlerts: AlertItem[] = alertsRes.value.data;
+        const escalatedAlerts = allAlerts.filter(a => a.is_escalated || a.status === 'ESCALATED' || (a.escalation_level && a.escalation_level > 0));
+        setAlerts(escalatedAlerts);
+        setRules((rulesRes.status === 'fulfilled' && rulesRes.value.data) || []);
+      } else {
+        // Load rich demonstration escalated alerts
+        const mappedEscalations: AlertItem[] = DEMO_ALERTS.map(a => ({
+          id: a.id,
+          alert_id: a.alert_id,
+          severity: a.severity,
+          source_id_code: a.source_id_code,
+          station_name: a.station_name,
+          division_name: a.division_name,
+          zone_name: a.zone_name,
+          source_type: a.source_type,
+          sample_result: `${a.parameter_name}: ${a.sample_value}`,
+          sample_date: a.sample_date,
+          status: a.status,
+          created_at: a.created_at,
+          due_date: a.due_date,
+          is_escalated: true,
+          escalation_level: a.escalation_level,
+          escalated_at: a.created_at,
+        }));
+
+        setAlerts(mappedEscalations);
+        setRules([
+          { id: 1, name: 'Level 1: Divisional Response (Sr.DEN / DMO)', alert_type: 'ALL', severity: 'CRITICAL', level: 1, delay_hours: 48, escalate_to_role: 'DIVISIONAL_OFFICER', is_active: true },
+          { id: 2, name: 'Level 2: Zonal Headquarters (PCE / PCMD)', alert_type: 'ALL', severity: 'CRITICAL', level: 2, delay_hours: 96, escalate_to_role: 'ZONAL_ADMIN', is_active: true },
+          { id: 3, name: 'Level 3: Railway Board Executive Directive (ED/EnHM)', alert_type: 'ALL', severity: 'CRITICAL', level: 3, delay_hours: 144, escalate_to_role: 'CENTRAL_ADMIN', is_active: true },
+        ]);
+      }
+    } catch {
+      // Offline fallback
+      setAlerts([]);
     } finally {
       setLoading(false);
     }

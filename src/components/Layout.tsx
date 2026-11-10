@@ -1,6 +1,6 @@
-import { useState, useEffect } from "react";
-import { Outlet, NavLink, useNavigate, useLocation } from "react-router-dom";
-import axios from "axios";
+import { useState, useEffect, useRef } from "react";
+import { Outlet, NavLink, useNavigate } from "react-router-dom";
+import { motion, AnimatePresence } from "framer-motion";
 import {
   LayoutDashboard,
   MapPin,
@@ -18,587 +18,558 @@ import {
   Database,
   Users,
   LogOut,
-  ChevronRight,
-  ChevronLeft,
-  Menu,
+  Search,
   Bell,
   Sun,
-  Moon
+  Moon,
+  ChevronRight,
+  Shield,
+  X,
+  Zap,
 } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
 import { useTheme } from "../context/ThemeContext";
-import { API_URL } from "../config/api";
+import { DEMO_STATIONS, DEMO_ALERTS } from "../data/mockDemoData";
 
-type NavItem = {
+interface NavItem {
   to: string;
   label: string;
   icon: any;
-  end: boolean;
+  end?: boolean;
   badge?: string;
+  badgeColor?: string;
   roles?: string[];
-};
+}
 
-type NavSection = {
+interface NavSection {
   title: string;
   items: NavItem[];
-};
+}
 
-const navSections: NavSection[] = [
+const NAV_SECTIONS: NavSection[] = [
   {
-    title: "Monitoring & GIS",
+    title: "Surveillance",
     items: [
       { to: "/", label: "Control Centre", icon: LayoutDashboard, end: true },
-      { to: "/gis", label: "GIS Water Surveillance", icon: MapPin, end: false },
-      { to: "/stations", label: "Stations", icon: Train, end: false },
-      { to: "/water-sources", label: "Water Sources", icon: Droplets, end: false },
+      { to: "/gis", label: "GIS Atlas", icon: MapPin },
+      { to: "/stations", label: "Stations Directory", icon: Train },
+      { to: "/water-sources", label: "Water Sources", icon: Droplets },
     ],
   },
   {
-    title: "Quality & Operations",
+    title: "Operations",
     items: [
-      { to: "/sampling", label: "Sampling Management", icon: CalendarCheck, end: false },
-      { to: "/lab/result-entry", label: "Laboratory", icon: FlaskConical, end: false },
-      { to: "/disinfection", label: "Disinfection", icon: Sparkles, end: false },
-      { to: "/alerts", label: "Alerts", icon: AlertTriangle, end: false, badge: "Live" },
-      { to: "/corrective-actions", label: "Corrective Actions", icon: ClipboardList, end: false },
-      { to: "/escalations", label: "Escalations", icon: Flame, end: false },
+      { to: "/sampling", label: "Sampling Schedules", icon: CalendarCheck },
+      { to: "/lab/result-entry", label: "Laboratory Entry", icon: FlaskConical },
+      { to: "/disinfection", label: "Disinfection", icon: Sparkles },
+      { to: "/alerts", label: "Alert Feed", icon: AlertTriangle, badge: "28", badgeColor: "bg-red-500 text-white" },
+      { to: "/corrective-actions", label: "Corrective Actions", icon: ClipboardList },
+      { to: "/escalations", label: "Escalation Ladder", icon: Flame, badge: "9", badgeColor: "bg-orange-500 text-white" },
     ],
   },
   {
-    title: "Intelligence & Admin",
+    title: "Governance",
     items: [
-      { to: "/analytics", label: "Analytics", icon: BarChart3, end: false },
-      { to: "/reports", label: "Reports", icon: FileText, end: false },
-      { to: "/audit", label: "Audit Trail", icon: History, end: false, roles: ["CENTRAL_ADMIN", "ZONAL_ADMIN", "SENIOR_MANAGEMENT"] },
-      { to: "/master-data", label: "Master Data", icon: Database, end: false, roles: ["CENTRAL_ADMIN", "ZONAL_ADMIN"] },
-      { to: "/users", label: "User Management", icon: Users, end: false, roles: ["CENTRAL_ADMIN"] },
+      { to: "/analytics", label: "Quality Analytics", icon: BarChart3 },
+      { to: "/reports", label: "Reports & Exports", icon: FileText },
+      { to: "/audit", label: "Audit Logs", icon: History, roles: ["CENTRAL_ADMIN", "ZONAL_ADMIN"] },
+      { to: "/master-data", label: "Master Standards", icon: Database, roles: ["CENTRAL_ADMIN", "ZONAL_ADMIN"] },
+      { to: "/users", label: "User Accounts", icon: Users, roles: ["CENTRAL_ADMIN"] },
     ],
   },
 ];
-
-const ROLE_LABELS: Record<string, string> = {
-  CENTRAL_ADMIN: "Central Admin",
-  ZONAL_ADMIN: "Zonal Admin",
-  DIVISIONAL_OFFICER: "Divisional Officer",
-  HMI: "H&MI Officer",
-  ENGINEERING: "Section Engineer",
-  LABORATORY: "Laboratory Staff",
-  STATION_INCHARGE: "Station Incharge",
-  SENIOR_MANAGEMENT: "Senior Management",
-};
 
 export function Layout() {
   const { user, logout } = useAuth();
   const { isDark, toggleTheme } = useTheme();
   const navigate = useNavigate();
-  const location = useLocation();
 
-  const [isCollapsed, setIsCollapsed] = useState(false);
-  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-  const [notificationCount, setNotificationCount] = useState(0);
+  const [isRailExpanded, setIsRailExpanded] = useState(false);
+  const [isCommandOpen, setIsCommandOpen] = useState(false);
+  const [commandQuery, setCommandQuery] = useState("");
+  const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
+  const [activeAlertCount, setActiveAlertCount] = useState(28);
+  const [simulatedAlertToast, setSimulatedAlertToast] = useState<string | null>(null);
 
-  // Close mobile drawer on route change
+  const commandInputRef = useRef<HTMLInputElement>(null);
+
+  // Keyboard shortcut listener for Ctrl+K or Cmd+K
   useEffect(() => {
-    setIsMobileMenuOpen(false);
-  }, [location.pathname]);
-
-  // Fetch live alert / notification count
-  useEffect(() => {
-    const fetchCounts = async () => {
-      try {
-        const res = await axios.get(`${API_URL}/alerts/summary`);
-        if (res.data) {
-          const totalUnresolved = (res.data.open || 0) + (res.data.escalated || 0);
-          setNotificationCount(totalUnresolved);
-        }
-      } catch (e) {
-        // Silent failover
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.key === "k") {
+        e.preventDefault();
+        setIsCommandOpen((prev) => !prev);
+      }
+      if (e.key === "Escape") {
+        setIsCommandOpen(false);
+        setIsNotificationsOpen(false);
       }
     };
-    fetchCounts();
-    const interval = setInterval(fetchCounts, 60000);
-    return () => clearInterval(interval);
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
   }, []);
+
+  useEffect(() => {
+    if (isCommandOpen) {
+      setTimeout(() => commandInputRef.current?.focus(), 50);
+    } else {
+      setCommandQuery("");
+    }
+  }, [isCommandOpen]);
+
+  // Filtered station search for Command Palette
+  const filteredStations = commandQuery.trim()
+    ? DEMO_STATIONS.filter(
+        (s) =>
+          s.name.toLowerCase().includes(commandQuery.toLowerCase()) ||
+          s.code.toLowerCase().includes(commandQuery.toLowerCase()) ||
+          s.division_code.toLowerCase().includes(commandQuery.toLowerCase())
+      ).slice(0, 7)
+    : DEMO_STATIONS.slice(0, 6);
+
+  const handleSimulateAlert = () => {
+    setActiveAlertCount((prev) => prev + 1);
+    setSimulatedAlertToast(
+      "CRITICAL: E. Coli bacterial contamination detected at PURATCHI THALAIVAR DR. M.G.R. CENTRAL (MAS) - Borewell #3"
+    );
+    // Dispatch custom event for dashboard/map to pick up live
+    window.dispatchEvent(
+      new CustomEvent("ir-simulated-alert", {
+        detail: {
+          stationCode: "MAS",
+          type: "E. Coli Positive",
+          timestamp: new Date().toISOString(),
+        },
+      })
+    );
+    setTimeout(() => {
+      setSimulatedAlertToast(null);
+    }, 6000);
+  };
+
+  const handleSelectStation = (_stationCode: string) => {
+    setIsCommandOpen(false);
+    navigate(`/stations`);
+  };
 
   const handleLogout = () => {
     logout();
     navigate("/login");
   };
 
-  const sidebarWidth = isCollapsed ? 76 : 270;
-
   return (
-    <div style={{ display: "flex", height: "100vh", background: "var(--bg-page)", overflow: "hidden" }}>
+    <div className="flex h-screen w-screen overflow-hidden bg-[var(--bg-canvas)] text-[var(--text-main)] font-body">
       
-      {/* Mobile Drawer Backdrop */}
-      {isMobileMenuOpen && (
-        <div
-          onClick={() => setIsMobileMenuOpen(false)}
-          style={{
-            position: "fixed",
-            inset: 0,
-            background: "rgba(15, 23, 42, 0.6)",
-            zIndex: 40,
-            backdropFilter: "blur(2px)",
-          }}
-        />
-      )}
-
-      {/* Sidebar (Desktop Persistent & Mobile Drawer) */}
+      {/* -------------------------------------------------------------
+          1. SLIM ICON RAIL (Expands smoothly on hover / click)
+          ------------------------------------------------------------- */}
       <aside
-        style={{
-          width: sidebarWidth,
-          background: "linear-gradient(180deg, #091224 0%, #0f2347 50%, #1e3a8a 100%)",
-          display: "flex",
-          flexDirection: "column",
-          flexShrink: 0,
-          boxShadow: "4px 0 24px rgba(0,0,0,0.25)",
-          zIndex: 50,
-          transition: "width 0.2s cubic-bezier(0.4, 0, 0.2, 1), transform 0.25s ease",
-          position: isMobileMenuOpen ? "fixed" : "relative",
-          top: 0,
-          bottom: 0,
-          left: 0,
-          transform: isMobileMenuOpen ? "translateX(0)" : undefined,
-        }}
-        className={isMobileMenuOpen ? "flex" : "hidden md:flex"}
+        onMouseEnter={() => setIsRailExpanded(true)}
+        onMouseLeave={() => setIsRailExpanded(false)}
+        className={`relative z-40 flex flex-col flex-shrink-0 transition-all duration-300 ease-in-out border-r border-[var(--border-base)] bg-[var(--bg-surface)] select-none ${
+          isRailExpanded ? "w-64 shadow-2xl" : "w-16"
+        }`}
       >
-        {/* Logo / Header with Collapse Toggle */}
-        <div
-          style={{
-            padding: isCollapsed ? "18px 12px" : "18px 18px",
-            borderBottom: "1px solid rgba(255,255,255,0.08)",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: isCollapsed ? "center" : "space-between",
-          }}
-        >
-          <div style={{ display: "flex", alignItems: "center", gap: 12, overflow: "hidden" }}>
-            <div
-              style={{
-                background: "linear-gradient(135deg, #1e40af, #3b82f6)",
-                borderRadius: 12,
-                padding: 8,
-                border: "1px solid rgba(255,255,255,0.2)",
-                boxShadow: "0 4px 12px rgba(37,99,235,0.3)",
-                flexShrink: 0,
-              }}
-            >
-              <Train size={22} color="white" />
+        {/* Rail Top Branding Anchor */}
+        <div className="h-16 flex items-center px-3.5 border-b border-[var(--border-base)] overflow-hidden">
+          <div className="flex items-center gap-3">
+            <div className="h-9 w-9 rounded-lg bg-[var(--ir-indigo)] text-white flex items-center justify-center font-display font-bold text-sm tracking-tighter flex-shrink-0 shadow-sm border border-indigo-400/30">
+              IR
             </div>
-            {!isCollapsed && (
-              <div style={{ overflow: "hidden", whiteSpace: "nowrap" }}>
-                <div style={{ fontSize: 16.5, fontWeight: 900, color: "white", letterSpacing: "0.2px" }}>
-                  IR-IWQMS
+            {isRailExpanded && (
+              <motion.div
+                initial={{ opacity: 0, x: -8 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ duration: 0.15 }}
+                className="flex flex-col whitespace-nowrap"
+              >
+                <span className="font-display font-bold text-xs tracking-wider text-[var(--ir-indigo)] dark:text-[var(--ir-teal)] uppercase">
+                  Indian Railways
+                </span>
+                <span className="text-[10px] text-[var(--text-muted)] font-medium">
+                  Water Surveillance Portal
+                </span>
+              </motion.div>
+            )}
+          </div>
+        </div>
+
+        {/* Rail Navigation Links */}
+        <div className="flex-1 overflow-y-auto overflow-x-hidden py-3 px-2 space-y-4">
+          {NAV_SECTIONS.map((section, sIdx) => (
+            <div key={sIdx} className="space-y-1">
+              {isRailExpanded && (
+                <div className="px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-[var(--text-faint)]">
+                  {section.title}
                 </div>
-                <div style={{ fontSize: 9.5, color: "rgba(255,255,255,0.6)", letterSpacing: "0.08em", textTransform: "uppercase", fontWeight: 700 }}>
-                  Indian Railways Water
+              )}
+              {section.items
+                .filter((item) => !item.roles || (user && item.roles.includes(user.role)))
+                .map((item) => {
+                  const Icon = item.icon;
+
+                  return (
+                    <NavLink
+                      key={item.to}
+                      to={item.to}
+                      end={item.end}
+                      className={({ isActive: linkActive }) =>
+                        `group flex items-center gap-3 px-2.5 py-2.5 rounded-lg text-xs font-medium transition-colors relative ${
+                          linkActive
+                            ? "bg-[var(--ir-indigo)] text-white shadow-sm font-semibold"
+                            : "text-[var(--text-muted)] hover:bg-[var(--bg-subtle)] hover:text-[var(--text-main)]"
+                        }`
+                      }
+                      title={!isRailExpanded ? item.label : undefined}
+                    >
+                      <Icon className="h-5 w-5 flex-shrink-0" />
+                      {isRailExpanded && (
+                        <motion.span
+                          initial={{ opacity: 0 }}
+                          animate={{ opacity: 1 }}
+                          className="truncate flex-1"
+                        >
+                          {item.label}
+                        </motion.span>
+                      )}
+                      {item.badge && isRailExpanded && (
+                        <span
+                          className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${
+                            item.badgeColor || "bg-blue-600 text-white"
+                          }`}
+                        >
+                          {item.badge}
+                        </span>
+                      )}
+                      {item.badge && !isRailExpanded && (
+                        <span className="absolute top-1.5 right-1.5 h-2 w-2 rounded-full bg-red-500 ring-2 ring-[var(--bg-surface)]" />
+                      )}
+                    </NavLink>
+                  );
+                })}
+            </div>
+          ))}
+        </div>
+
+        {/* Rail Bottom User Profile & Logout */}
+        <div className="p-2 border-t border-[var(--border-base)] bg-[var(--bg-subtle)]/50">
+          <div className="flex items-center gap-2.5 p-1.5 rounded-lg">
+            <div className="h-8 w-8 rounded-full bg-slate-800 text-white flex items-center justify-center font-bold text-xs flex-shrink-0">
+              CA
+            </div>
+            {isRailExpanded && (
+              <div className="flex-1 min-w-0">
+                <div className="text-xs font-semibold truncate text-[var(--text-main)]">
+                  {user?.name || "Central Admin"}
+                </div>
+                <div className="text-[10px] text-[var(--text-muted)] truncate">
+                  Railway Board (HQ)
                 </div>
               </div>
             )}
-          </div>
-
-          {!isCollapsed && (
-            <button
-              onClick={() => setIsCollapsed(true)}
-              title="Collapse sidebar"
-              className="hidden md:flex"
-              style={{
-                background: "rgba(255,255,255,0.08)",
-                border: "1px solid rgba(255,255,255,0.12)",
-                borderRadius: 6,
-                padding: 4,
-                color: "#93c5fd",
-                cursor: "pointer",
-              }}
-            >
-              <ChevronLeft size={16} />
-            </button>
-          )}
-        </div>
-
-        {/* Collapsed Expand Button */}
-        {isCollapsed && (
-          <div style={{ display: "flex", justifyContent: "center", padding: "8px 0", borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
-            <button
-              onClick={() => setIsCollapsed(false)}
-              title="Expand sidebar"
-              style={{
-                background: "rgba(255,255,255,0.08)",
-                border: "1px solid rgba(255,255,255,0.12)",
-                borderRadius: 6,
-                padding: 5,
-                color: "#93c5fd",
-                cursor: "pointer",
-              }}
-            >
-              <ChevronRight size={16} />
-            </button>
-          </div>
-        )}
-
-        {/* Navigation - Scrollable (ALL 15 ITEMS) */}
-        <nav style={{ padding: isCollapsed ? "12px 8px" : "14px 10px", flex: 1, overflowY: "auto" }}>
-          {navSections.map((section, sIdx) => {
-            const filteredItems = section.items.filter(
-              (item) => !item.roles || (user && item.roles.includes(user.role))
-            );
-            if (filteredItems.length === 0) return null;
-
-            return (
-              <div key={sIdx} style={{ marginBottom: isCollapsed ? 12 : 16 }}>
-                {!isCollapsed && (
-                  <div
-                    style={{
-                      fontSize: 10,
-                      fontWeight: 800,
-                      color: "rgba(147,197,253,0.65)",
-                      letterSpacing: "0.1em",
-                      textTransform: "uppercase",
-                      padding: "0 10px",
-                      marginBottom: 6,
-                    }}
-                  >
-                    {section.title}
-                  </div>
-                )}
-                {filteredItems.map(({ to, label, icon: Icon, end, badge }) => (
-                  <NavLink
-                    key={to}
-                    to={to}
-                    end={end}
-                    title={isCollapsed ? label : undefined}
-                    style={({ isActive }) => ({
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: isCollapsed ? "center" : "flex-start",
-                      gap: 10,
-                      padding: isCollapsed ? "10px" : "8px 12px",
-                      borderRadius: 9,
-                      marginBottom: 3,
-                      textDecoration: "none",
-                      background: isActive ? "rgba(59,130,246,0.24)" : "transparent",
-                      color: isActive ? "#ffffff" : "rgba(255,255,255,0.68)",
-                      fontWeight: isActive ? 700 : 500,
-                      fontSize: 13,
-                      transition: "all 0.15s ease",
-                      border: isActive ? "1px solid rgba(147,197,253,0.3)" : "1px solid transparent",
-                      boxShadow: isActive ? "0 2px 8px rgba(0,0,0,0.2)" : "none",
-                    })}
-                  >
-                    {({ isActive }) => (
-                      <>
-                        <Icon size={17} style={{ color: isActive ? "#60a5fa" : "inherit", flexShrink: 0 }} />
-                        {!isCollapsed && (
-                          <span style={{ flex: 1, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
-                            {label}
-                          </span>
-                        )}
-                        {!isCollapsed && badge && (
-                          <span
-                            style={{
-                              fontSize: 9.5,
-                              fontWeight: 800,
-                              padding: "2px 6px",
-                              borderRadius: 6,
-                              background: "#ef4444",
-                              color: "white",
-                              textTransform: "uppercase",
-                              boxShadow: "0 0 6px rgba(239,68,68,0.6)",
-                            }}
-                          >
-                            {badge}
-                          </span>
-                        )}
-                        {!isCollapsed && isActive && <ChevronRight size={13} style={{ opacity: 0.8 }} />}
-                      </>
-                    )}
-                  </NavLink>
-                ))}
-              </div>
-            );
-          })}
-        </nav>
-
-        {/* User info + Logout */}
-        <div
-          style={{
-            padding: isCollapsed ? "10px 8px" : "12px",
-            borderTop: "1px solid rgba(255,255,255,0.08)",
-            background: "rgba(0,0,0,0.2)",
-          }}
-        >
-          {user && (
-            <div
-              style={{
-                background: "rgba(255,255,255,0.06)",
-                borderRadius: 10,
-                padding: isCollapsed ? "8px" : "9px 12px",
-                marginBottom: 8,
-                border: "1px solid rgba(255,255,255,0.08)",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: isCollapsed ? "center" : "flex-start",
-                gap: 10,
-              }}
-            >
-              <div
-                style={{
-                  width: 30,
-                  height: 30,
-                  borderRadius: "50%",
-                  background: "linear-gradient(135deg, #3b82f6, #8b5cf6)",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  fontSize: 12,
-                  fontWeight: 800,
-                  color: "white",
-                  flexShrink: 0,
-                  boxShadow: "0 2px 6px rgba(0,0,0,0.2)",
-                }}
+            {isRailExpanded && (
+              <button
+                onClick={handleLogout}
+                className="p-1.5 text-[var(--text-muted)] hover:text-red-500 rounded-md hover:bg-[var(--bg-surface)] transition-colors"
+                title="Sign Out"
               >
-                {user.name?.charAt(0) || "U"}
-              </div>
-              {!isCollapsed && (
-                <div style={{ overflow: "hidden" }}>
-                  <div style={{ fontSize: 12, fontWeight: 700, color: "white", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
-                    {user.name}
-                  </div>
-                  <div style={{ fontSize: 10, color: "#93c5fd", fontWeight: 600 }}>
-                    {ROLE_LABELS[user.role] || user.role}
-                  </div>
-                </div>
-              )}
-            </div>
-          )}
-
-          <button
-            id="logoutBtn"
-            onClick={handleLogout}
-            title={isCollapsed ? "Sign Out" : undefined}
-            style={{
-              width: "100%",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              gap: 8,
-              padding: "7px 10px",
-              borderRadius: 8,
-              border: "none",
-              background: "rgba(239,68,68,0.18)",
-              color: "#fca5a5",
-              fontSize: 12,
-              fontWeight: 700,
-              cursor: "pointer",
-              transition: "all 0.15s",
-              fontFamily: "inherit",
-            }}
-          >
-            <LogOut size={14} />
-            {!isCollapsed && <span>Sign Out</span>}
-          </button>
+                <LogOut className="h-4 w-4" />
+              </button>
+            )}
+          </div>
         </div>
       </aside>
 
-      {/* Main Content Area */}
-      <main style={{ flex: 1, display: "flex", flexDirection: "column", overflow: "hidden", position: "relative" }}>
+      {/* -------------------------------------------------------------
+          2. MAIN VIEWPORT & TOP COMMAND BAR
+          ------------------------------------------------------------- */}
+      <div className="flex-1 flex flex-col min-w-0 h-screen overflow-hidden">
         
-        {/* Top Header Bar */}
-        <header
-          style={{
-            height: 64,
-            background: "var(--bg-header)",
-            borderBottom: "1px solid var(--border-color)",
-            display: "flex",
-            alignItems: "center",
-            padding: "0 24px",
-            boxShadow: "0 1px 3px rgba(0,0,0,0.06)",
-            flexShrink: 0,
-            justifyContent: "space-between",
-            transition: "background 0.2s ease, border-color 0.2s ease"
-          }}
-        >
-          <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
-            {/* Mobile Hamburger Menu Toggle */}
-            <button
-              onClick={() => setIsMobileMenuOpen(true)}
-              className="flex md:hidden"
-              style={{
-                background: "transparent",
-                border: "none",
-                color: "#3b82f6",
-                cursor: "pointer",
-                padding: 4,
-              }}
-            >
-              <Menu size={22} />
-            </button>
-
-            <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-              <span
-                style={{
-                  fontSize: 11,
-                  fontWeight: 800,
-                  padding: "4px 10px",
-                  borderRadius: 6,
-                  background: "linear-gradient(135deg, #1e3a8a, #2563eb)",
-                  color: "white",
-                  letterSpacing: "0.05em",
-                }}
-              >
+        {/* TOP COMMAND BAR */}
+        <header className="h-16 border-b border-[var(--border-base)] bg-[var(--bg-surface)] px-5 flex items-center justify-between gap-4 flex-shrink-0 z-30">
+          
+          {/* Left: Brand Identity & Telemetry Status Pill */}
+          <div className="flex items-center gap-4">
+            <div className="flex items-center gap-2">
+              <span className="font-display font-extrabold text-base tracking-tight text-[var(--text-main)]">
                 IR-IWQMS
               </span>
-              <h1
-                style={{
-                  fontSize: 15.5,
-                  fontWeight: 800,
-                  color: "var(--text-primary)",
-                  margin: 0,
-                  letterSpacing: "-0.2px",
-                }}
-                className="hidden sm:block"
-              >
-                Indian Railways Integrated Water Quality Monitoring & Surveillance System
-              </h1>
+              <span className="hidden sm:inline-block text-[11px] font-semibold text-[var(--text-muted)] border-l border-[var(--border-base)] pl-3">
+                Integrated Water Quality Surveillance
+              </span>
+            </div>
+
+            <div className="hidden lg:flex items-center gap-2 px-2.5 py-1 rounded-full bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800/60 text-emerald-700 dark:text-emerald-400 text-[11px] font-medium">
+              <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
+              <span>IS 10500:2012 Engine Online</span>
             </div>
           </div>
 
-          <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
-            {/* Dark Mode / Light Mode Theme Toggle Button */}
+          {/* Center: Global Station Search (Ctrl+K Command Palette Trigger) */}
+          <div className="flex-1 max-w-xl mx-2">
+            <button
+              onClick={() => setIsCommandOpen(true)}
+              className="w-full h-10 px-3.5 rounded-lg border border-[var(--border-base)] bg-[var(--bg-subtle)] hover:bg-[var(--bg-surface-hover)] hover:border-[var(--border-strong)] transition-all flex items-center justify-between text-left group"
+            >
+              <div className="flex items-center gap-2.5 text-xs text-[var(--text-muted)]">
+                <Search className="h-4 w-4 text-[var(--text-faint)] group-hover:text-[var(--ir-indigo)] dark:group-hover:text-[var(--ir-teal)] transition-colors" />
+                <span className="truncate">Search stations, divisions, parameters...</span>
+              </div>
+              <div className="flex items-center gap-1">
+                <kbd className="hidden sm:inline-flex items-center px-1.5 py-0.5 text-[10px] font-semibold font-mono text-[var(--text-faint)] bg-[var(--bg-surface)] border border-[var(--border-base)] rounded shadow-2xs">
+                  Ctrl+K
+                </kbd>
+              </div>
+            </button>
+          </div>
+
+          {/* Right: Actions, Demo Trigger, Live Notification, Theme Toggle */}
+          <div className="flex items-center gap-2 sm:gap-3 flex-shrink-0">
+            
+            {/* Live Presentation Demo Trigger Button */}
+            <button
+              onClick={handleSimulateAlert}
+              className="hidden md:inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-orange-500/10 hover:bg-orange-500/20 text-orange-600 dark:text-orange-400 border border-orange-300 dark:border-orange-800/50 text-xs font-semibold transition-all shadow-2xs active:scale-95"
+              title="Simulate Critical Contamination Alert for Client Demo"
+            >
+              <Zap className="h-3.5 w-3.5 fill-current" />
+              <span>Simulate Alert</span>
+            </button>
+
+            {/* Notification Bell with Live Count */}
+            <div className="relative">
+              <button
+                onClick={() => setIsNotificationsOpen(!isNotificationsOpen)}
+                className="relative p-2 rounded-lg text-[var(--text-muted)] hover:text-[var(--text-main)] hover:bg-[var(--bg-subtle)] transition-colors border border-transparent hover:border-[var(--border-base)]"
+                title="Live Alerts & Notifications"
+              >
+                <Bell className="h-4 w-4" />
+                {activeAlertCount > 0 && (
+                  <span className="absolute top-1.5 right-1.5 flex h-2 w-2">
+                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75" />
+                    <span className="relative inline-flex rounded-full h-2 w-2 bg-red-500" />
+                  </span>
+                )}
+              </button>
+
+              {/* Notification Quick Flyout */}
+              <AnimatePresence>
+                {isNotificationsOpen && (
+                  <motion.div
+                    initial={{ opacity: 0, y: 8, scale: 0.96 }}
+                    animate={{ opacity: 1, y: 0, scale: 1 }}
+                    exit={{ opacity: 0, y: 8, scale: 0.96 }}
+                    transition={{ duration: 0.15 }}
+                    className="absolute right-0 mt-2 w-80 sm:w-96 rounded-xl border border-[var(--border-strong)] bg-[var(--bg-surface)] shadow-2xl p-4 z-50"
+                  >
+                    <div className="flex items-center justify-between border-b border-[var(--border-base)] pb-3 mb-3">
+                      <div className="flex items-center gap-2">
+                        <span className="font-display font-bold text-sm">Surveillance Alerts</span>
+                        <span className="status-chip status-chip-unfit text-[10px]">
+                          {activeAlertCount} Open
+                        </span>
+                      </div>
+                      <NavLink
+                        to="/alerts"
+                        onClick={() => setIsNotificationsOpen(false)}
+                        className="text-xs text-[var(--ir-indigo)] dark:text-[var(--ir-teal)] font-semibold hover:underline"
+                      >
+                        View All
+                      </NavLink>
+                    </div>
+
+                    <div className="space-y-2.5 max-h-72 overflow-y-auto pr-1">
+                      {DEMO_ALERTS.slice(0, 3).map((alert) => (
+                        <div
+                          key={alert.id}
+                          onClick={() => {
+                            setIsNotificationsOpen(false);
+                            navigate(`/alerts/${alert.id}`);
+                          }}
+                          className="p-2.5 rounded-lg border border-[var(--border-base)] bg-[var(--bg-subtle)] hover:bg-[var(--bg-surface-hover)] cursor-pointer transition-colors"
+                        >
+                          <div className="flex items-center justify-between text-[11px] mb-1">
+                            <span className="font-bold text-red-600 dark:text-red-400">
+                              {alert.severity} • {alert.station_code}
+                            </span>
+                            <span className="text-[var(--text-faint)] tabular-nums">
+                              {alert.hours_remaining}h left
+                            </span>
+                          </div>
+                          <div className="text-xs font-medium text-[var(--text-main)] truncate">
+                            {alert.parameter_name}: {alert.sample_value}
+                          </div>
+                          <div className="text-[10px] text-[var(--text-muted)] truncate mt-0.5">
+                            {alert.source_type}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </div>
+
+            {/* Dark / Light Theme Toggle */}
             <button
               onClick={toggleTheme}
-              title={isDark ? "Switch to Light Mode" : "Switch to Dark Command Mode"}
-              style={{
-                background: isDark ? "rgba(255,255,255,0.08)" : "rgba(15,23,42,0.05)",
-                border: `1px solid ${isDark ? "rgba(255,255,255,0.14)" : "rgba(0,0,0,0.1)"}`,
-                borderRadius: 8,
-                padding: "6px 11px",
-                cursor: "pointer",
-                display: "flex",
-                alignItems: "center",
-                gap: 6,
-                color: isDark ? "#fbbf24" : "#475569",
-                fontSize: 12,
-                fontWeight: 700,
-                transition: "all 0.15s ease",
-              }}
+              className="p-2 rounded-lg text-[var(--text-muted)] hover:text-[var(--text-main)] hover:bg-[var(--bg-subtle)] transition-colors border border-transparent hover:border-[var(--border-base)]"
+              title={isDark ? "Switch to Presentation Light Mode" : "Switch to Command Dark Mode"}
             >
-              {isDark ? <Sun size={15} className="text-amber-400" /> : <Moon size={15} className="text-slate-600" />}
-              <span className="hidden sm:inline" style={{ color: "var(--text-primary)" }}>{isDark ? "Dark Ops" : "Light"}</span>
-            </button>
-
-            {/* User Role Badge */}
-            {user && (
-              <span
-                style={{
-                  fontSize: 11.5,
-                  fontWeight: 700,
-                  padding: "4px 10px",
-                  borderRadius: 6,
-                  background: isDark ? "rgba(30, 58, 138, 0.4)" : "#eff6ff",
-                  color: isDark ? "#93c5fd" : "#1d4ed8",
-                  border: isDark ? "1px solid rgba(59, 130, 246, 0.3)" : "1px solid #bfdbfe",
-                }}
-                className="hidden sm:inline-block"
-              >
-                {ROLE_LABELS[user.role] || user.role}
-              </span>
-            )}
-
-            {/* Notification Count Badge */}
-            <button
-              onClick={() => navigate("/alerts")}
-              title="Active Alert Incidents"
-              style={{
-                background: isDark ? "rgba(255,255,255,0.06)" : "transparent",
-                border: isDark ? "1px solid rgba(255,255,255,0.1)" : "none",
-                borderRadius: 8,
-                position: "relative",
-                cursor: "pointer",
-                padding: 7,
-                display: "flex",
-                alignItems: "center",
-                color: isDark ? "#cbd5e1" : "#475569",
-              }}
-            >
-              <Bell size={18} />
-              {notificationCount > 0 && (
-                <span
-                  style={{
-                    position: "absolute",
-                    top: 1,
-                    right: 1,
-                    background: "#dc2626",
-                    color: "white",
-                    fontSize: 10,
-                    fontWeight: 800,
-                    width: 17,
-                    height: 17,
-                    borderRadius: "50%",
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    border: "2px solid var(--bg-header)",
-                  }}
-                >
-                  {notificationCount > 99 ? "99+" : notificationCount}
-                </span>
+              {isDark ? (
+                <Sun className="h-4 w-4 text-amber-400" />
+              ) : (
+                <Moon className="h-4 w-4 text-indigo-700" />
               )}
             </button>
-
-            <div style={{ width: 1, height: 22, background: "var(--border-color)" }} />
-
-            {/* Live Feed Status Indicator */}
-            <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-              <div
-                style={{
-                  width: 8,
-                  height: 8,
-                  borderRadius: "50%",
-                  background: "#16a34a",
-                  boxShadow: "0 0 8px #16a34a",
-                  animation: "pulse 2s ease-in-out infinite",
-                }}
-              />
-              <span style={{ fontSize: 12, color: "var(--text-secondary)", fontWeight: 700 }}>Live Feed</span>
-            </div>
           </div>
         </header>
 
-        {/* Content Viewport with Vertical Scroll */}
-        <div style={{ flex: 1, overflow: "hidden", display: "flex", flexDirection: "column", position: "relative" }}>
-          <div style={{ flex: 1, height: "100%", overflowY: location.pathname.startsWith('/gis') ? 'hidden' : 'auto' }}>
+        {/* SIMULATED ALERT TOAST (Triggered by Demo button) */}
+        <AnimatePresence>
+          {simulatedAlertToast && (
+            <motion.div
+              initial={{ opacity: 0, y: -20 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -20 }}
+              className="fixed top-20 right-6 z-50 max-w-md p-4 rounded-xl border border-red-500 bg-red-600 text-white shadow-2xl flex items-start gap-3"
+            >
+              <AlertTriangle className="h-5 w-5 flex-shrink-0 mt-0.5 animate-bounce" />
+              <div className="flex-1 min-w-0">
+                <div className="font-bold text-xs uppercase tracking-wider text-red-100">
+                  ⚡ Live Simulation Broadcast
+                </div>
+                <div className="text-xs font-semibold mt-1 leading-snug">
+                  {simulatedAlertToast}
+                </div>
+                <div className="mt-2 flex gap-2">
+                  <button
+                    onClick={() => {
+                      setSimulatedAlertToast(null);
+                      navigate("/escalations");
+                    }}
+                    className="text-[11px] font-bold bg-white text-red-700 px-2.5 py-1 rounded shadow-xs hover:bg-red-50"
+                  >
+                    View Escalation Ladder
+                  </button>
+                </div>
+              </div>
+              <button
+                onClick={() => setSimulatedAlertToast(null)}
+                className="text-red-200 hover:text-white"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        {/* PAGE CONTENT CONTAINER */}
+        <main className="flex-1 overflow-y-auto overflow-x-hidden bg-[var(--bg-canvas)] flex flex-col">
+          <div className="flex-1">
             <Outlet />
           </div>
 
-          {!location.pathname.startsWith('/gis') && (
-            <footer
-              style={{
-                padding: "12px 16px",
-                textAlign: "center",
-                fontSize: "12px",
-                color: "var(--text-muted)",
-                fontWeight: 600,
-                borderTop: "1px solid var(--border-color)",
-                marginTop: "auto",
-                backgroundColor: "var(--bg-header)",
-                letterSpacing: "0.02em",
-                flexShrink: 0,
-              }}
-            >
-              DONE BY NIRANJAN.R | ARUN KARTHICK .P | MADHAN KUMAR .S
-            </footer>
-          )}
-        </div>
-      </main>
+          {/* QUIET CIVIC FOOTER WITH CREDIT LINE */}
+          <footer className="border-t border-[var(--border-base)] bg-[var(--bg-surface)] py-3 px-6 text-center text-[11px] text-[var(--text-faint)] flex flex-col sm:flex-row items-center justify-between gap-2">
+            <div className="flex items-center gap-2">
+              <Shield className="h-3.5 w-3.5 text-[var(--ir-indigo)] dark:text-[var(--ir-teal)]" />
+              <span>Ministry of Railways · Government of India · Integrated Water Surveillance</span>
+            </div>
+            <div className="font-medium text-[var(--text-muted)] tracking-wide">
+              Done by Niranjan R | Arun Karthick P | Madhan Kumar S
+            </div>
+          </footer>
+        </main>
+      </div>
 
-      <style>{`
-        @keyframes pulse {
-          0%, 100% { opacity: 1; }
-          50% { opacity: 0.4; }
-        }
-      `}</style>
+      {/* -------------------------------------------------------------
+          3. GLOBAL STATION COMMAND PALETTE (Ctrl+K MODAL)
+          ------------------------------------------------------------- */}
+      <AnimatePresence>
+        {isCommandOpen && (
+          <div className="fixed inset-0 z-50 flex items-start justify-center pt-20 px-4 bg-black/50 backdrop-blur-xs">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: -10 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: -10 }}
+              transition={{ duration: 0.15 }}
+              className="w-full max-w-2xl rounded-2xl border border-[var(--border-strong)] bg-[var(--bg-command)] shadow-2xl overflow-hidden flex flex-col"
+            >
+              {/* Search Input Bar */}
+              <div className="flex items-center gap-3 px-4 py-3.5 border-b border-[var(--border-base)]">
+                <Search className="h-5 w-5 text-[var(--ir-indigo)] dark:text-[var(--ir-teal)] flex-shrink-0" />
+                <input
+                  ref={commandInputRef}
+                  type="text"
+                  value={commandQuery}
+                  onChange={(e) => setCommandQuery(e.target.value)}
+                  placeholder="Type a station name, code (e.g. MAS, NDLS, HWH) or division..."
+                  className="flex-1 bg-transparent text-sm text-[var(--text-main)] placeholder-[var(--text-faint)] outline-none"
+                />
+                <button
+                  onClick={() => setIsCommandOpen(false)}
+                  className="text-xs px-2 py-1 rounded bg-[var(--bg-subtle)] text-[var(--text-muted)] hover:text-[var(--text-main)]"
+                >
+                  ESC
+                </button>
+              </div>
+
+              {/* Search Results */}
+              <div className="p-3 max-h-96 overflow-y-auto space-y-1">
+                <div className="text-[10px] font-bold uppercase tracking-wider text-[var(--text-faint)] px-2 py-1">
+                  Indian Railways Stations Directory
+                </div>
+                {filteredStations.map((station) => (
+                  <div
+                    key={station.code}
+                    onClick={() => handleSelectStation(station.code)}
+                    className="flex items-center justify-between p-2.5 rounded-lg hover:bg-[var(--bg-subtle)] cursor-pointer group transition-colors"
+                  >
+                    <div className="flex items-center gap-3 min-w-0">
+                      <div className="h-8 w-8 rounded-lg bg-[var(--ir-indigo)]/10 text-[var(--ir-indigo)] dark:text-[var(--ir-teal)] flex items-center justify-center font-display font-bold text-xs flex-shrink-0">
+                        {station.code}
+                      </div>
+                      <div className="min-w-0">
+                        <div className="text-xs font-semibold text-[var(--text-main)] truncate group-hover:text-[var(--ir-indigo)] dark:group-hover:text-[var(--ir-teal)]">
+                          {station.name}
+                        </div>
+                        <div className="text-[11px] text-[var(--text-muted)]">
+                          {station.division_code} Div · {station.zone_code} · {station.category}
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-2">
+                      <span
+                        className={`status-chip text-[10px] ${
+                          station.status === "COMPLIANT"
+                            ? "status-chip-compliant"
+                            : station.status === "DUE"
+                            ? "status-chip-attention"
+                            : station.status === "OVERDUE"
+                            ? "status-chip-overdue"
+                            : "status-chip-unfit"
+                        }`}
+                      >
+                        {station.status}
+                      </span>
+                      <ChevronRight className="h-4 w-4 text-[var(--text-faint)] group-hover:translate-x-0.5 transition-transform" />
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              {/* Modal Footer */}
+              <div className="px-4 py-2.5 border-t border-[var(--border-base)] bg-[var(--bg-subtle)] flex items-center justify-between text-[11px] text-[var(--text-faint)]">
+                <span>Select a station to inspect water sources, chlorine ppm & lab records</span>
+                <span className="font-mono">Total {DEMO_STATIONS.length} Stations Online</span>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
     </div>
   );
 }

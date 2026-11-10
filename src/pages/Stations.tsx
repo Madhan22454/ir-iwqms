@@ -14,11 +14,10 @@ import {
 } from 'lucide-react';
 import { API_URL } from '../config/api';
 import { 
-  FALLBACK_STATIONS, 
-  FALLBACK_DIVISIONS, 
-  FALLBACK_ZONES, 
-  FALLBACK_WATER_SOURCES 
-} from '../data/gisFallbackData';
+  DEMO_STATIONS,
+  DEMO_DIVISIONS,
+  DEMO_ZONES,
+} from '../data/mockDemoData';
 
 interface Station {
   id: number;
@@ -78,30 +77,69 @@ export default function Stations() {
     setLoading(true);
     setError(null);
     try {
-      const [stnRes, divRes, zoneRes, wsRes] = await Promise.all([
+      const [stnRes, divRes, zoneRes, wsRes] = await Promise.allSettled([
         axios.get(`${API_URL}/hierarchy/stations/`),
         axios.get(`${API_URL}/hierarchy/divisions/`),
         axios.get(`${API_URL}/hierarchy/zones/`),
         axios.get(`${API_URL}/hierarchy/water-sources/`),
       ]);
 
-      if (stnRes.data && stnRes.data.length > 0) {
-        setStations(stnRes.data);
-        setDivisions(divRes.data || []);
-        setZones(zoneRes.data || []);
-        setWaterSources(wsRes.data || []);
+      const hasLiveStations = stnRes.status === 'fulfilled' && stnRes.value.data?.length > 10;
+      if (hasLiveStations) {
+        setStations(stnRes.value.data);
+        setDivisions((divRes.status === 'fulfilled' && divRes.value.data) || []);
+        setZones((zoneRes.status === 'fulfilled' && zoneRes.value.data) || []);
+        setWaterSources((wsRes.status === 'fulfilled' && wsRes.value.data) || []);
       } else {
-        setStations(FALLBACK_STATIONS as any);
-        setDivisions(FALLBACK_DIVISIONS as any);
-        setZones(FALLBACK_ZONES as any);
-        setWaterSources(FALLBACK_WATER_SOURCES as any);
+        // Load rich 280+ stations demo registry
+        const mappedStations: Station[] = DEMO_STATIONS.map((s, idx) => ({
+          id: s.id,
+          name: s.name,
+          code: s.code,
+          category: s.category,
+          gps_lat: s.lat,
+          gps_long: s.lng,
+          division_id: (idx % DEMO_DIVISIONS.length) + 1,
+        }));
+
+        const mappedDivs: Division[] = DEMO_DIVISIONS.map(d => ({
+          id: d.id,
+          name: d.name,
+          code: d.code,
+          zone_id: d.zone_id,
+        }));
+
+        const mappedZones: Zone[] = DEMO_ZONES.map(z => ({
+          id: z.id,
+          name: z.name,
+          code: z.code,
+        }));
+
+        const mappedSources: WaterSource[] = DEMO_STATIONS.map(s => ({
+          id: s.id,
+          station_id: s.id,
+          source_id_code: `WS-${s.code}-01`,
+          current_status: s.status,
+        }));
+
+        setStations(mappedStations);
+        setDivisions(mappedDivs);
+        setZones(mappedZones);
+        setWaterSources(mappedSources);
       }
-    } catch (err: any) {
-      console.warn('API unavailable, loading demonstration stations:', err);
-      setStations(FALLBACK_STATIONS as any);
-      setDivisions(FALLBACK_DIVISIONS as any);
-      setZones(FALLBACK_ZONES as any);
-      setWaterSources(FALLBACK_WATER_SOURCES as any);
+    } catch {
+      // Fallback
+      setStations(DEMO_STATIONS.map((s, idx) => ({
+        id: s.id,
+        name: s.name,
+        code: s.code,
+        category: s.category,
+        gps_lat: s.lat,
+        gps_long: s.lng,
+        division_id: (idx % DEMO_DIVISIONS.length) + 1,
+      })));
+      setDivisions(DEMO_DIVISIONS.map(d => ({ id: d.id, name: d.name, code: d.code, zone_id: d.zone_id })));
+      setZones(DEMO_ZONES.map(z => ({ id: z.id, name: z.name, code: z.code })));
     } finally {
       setLoading(false);
     }

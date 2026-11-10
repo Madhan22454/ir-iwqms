@@ -12,11 +12,10 @@ import { useTheme } from '../context/ThemeContext';
 
 import { API_URL as API } from '../config/api';
 import { 
-  FALLBACK_STATIONS, 
-  FALLBACK_WATER_SOURCES, 
-  FALLBACK_DIVISIONS, 
-  FALLBACK_ZONES 
-} from '../data/gisFallbackData';
+  DEMO_STATIONS,
+  DEMO_DIVISIONS,
+  DEMO_ZONES,
+} from '../data/mockDemoData';
 import { INDIA_SVG_STATES, INDIA_SVG_VIEWBOX, geoToSvgCoords, IRI_ATLAS_STATE_COLORS } from '../data/indiaSvgData';
 import { INDIAN_RAILWAY_TRUNK_CORRIDORS } from '../data/indiaRailwayCorridors';
 import { ALL_INDIAN_RAIL_STATIONS, type NetworkStationNode } from '../data/allIndianRailStations';
@@ -270,25 +269,72 @@ export default function GISMap() {
       ]);
       
       const loadedStations = stnRes.data || [];
-      if (loadedStations.length > 0) {
+      if (loadedStations.length > 10) {
         setStations(loadedStations);
         setWaterSources(wsRes.data || []);
         setDivisions(divRes.data || []);
         setZones(zoneRes.data || []);
         setUsingFallback(false);
       } else {
-        setStations(FALLBACK_STATIONS);
-        setWaterSources(FALLBACK_WATER_SOURCES);
-        setDivisions(FALLBACK_DIVISIONS);
-        setZones(FALLBACK_ZONES);
+        const mappedStations = DEMO_STATIONS.map((s, idx) => ({
+          id: s.id,
+          name: s.name,
+          code: s.code,
+          category: s.category,
+          gps_lat: s.lat,
+          gps_long: s.lng,
+          division_id: (idx % DEMO_DIVISIONS.length) + 1,
+        }));
+
+        const mappedSources = DEMO_STATIONS.map(s => ({
+          id: s.id,
+          station_id: s.id,
+          source_id_code: `WS-${s.code}-01`,
+          source_type: 'Borewell & Hydrant Line',
+          current_status: s.status,
+          residual_chlorine_last: s.chlorine_ppm,
+        }));
+
+        const mappedDivs = DEMO_DIVISIONS.map(d => ({
+          id: d.id,
+          name: d.name,
+          code: d.code,
+          zone_id: d.zone_id,
+        }));
+
+        const mappedZones = DEMO_ZONES.map(z => ({
+          id: z.id,
+          name: z.name,
+          code: z.code,
+        }));
+
+        setStations(mappedStations);
+        setWaterSources(mappedSources);
+        setDivisions(mappedDivs);
+        setZones(mappedZones);
         setUsingFallback(true);
       }
-    } catch (err) {
-      console.warn("API offline. Loading Pan-India GIS demonstration network.", err);
-      setStations(FALLBACK_STATIONS);
-      setWaterSources(FALLBACK_WATER_SOURCES);
-      setDivisions(FALLBACK_DIVISIONS);
-      setZones(FALLBACK_ZONES);
+    } catch {
+      const mappedStations = DEMO_STATIONS.map((s, idx) => ({
+        id: s.id,
+        name: s.name,
+        code: s.code,
+        category: s.category,
+        gps_lat: s.lat,
+        gps_long: s.lng,
+        division_id: (idx % DEMO_DIVISIONS.length) + 1,
+      }));
+      const mappedSources = DEMO_STATIONS.map(s => ({
+        id: s.id,
+        station_id: s.id,
+        source_id_code: `WS-${s.code}-01`,
+        source_type: 'Borewell & Hydrant Line',
+        current_status: s.status,
+      }));
+      setStations(mappedStations);
+      setWaterSources(mappedSources);
+      setDivisions(DEMO_DIVISIONS.map(d => ({ id: d.id, name: d.name, code: d.code, zone_id: d.zone_id })));
+      setZones(DEMO_ZONES.map(z => ({ id: z.id, name: z.name, code: z.code })));
       setUsingFallback(true);
     } finally {
       setLoading(false);
@@ -560,7 +606,7 @@ export default function GISMap() {
               className={`flex items-center gap-1 px-2.5 py-1.5 rounded-lg border text-xs font-bold transition-all ${showCorridors ? 'bg-indigo-600/30 text-indigo-200 border-indigo-500/50 shadow-sm' : 'bg-slate-800 text-slate-400 border-slate-700'}`}
             >
               <Train className="w-3.5 h-3.5 text-indigo-400" />
-              <span className="hidden lg:inline">Railway Lines</span>
+              <span className="hidden xl:inline">Railway Lines</span>
             </button>
 
             {/* ALL NETWORK STATIONS TOGGLE BUTTON */}
@@ -570,7 +616,7 @@ export default function GISMap() {
               className={`flex items-center gap-1 px-2.5 py-1.5 rounded-lg border text-xs font-bold transition-all ${showAllNetworkStations ? 'bg-teal-600/30 text-teal-200 border-teal-500/50 shadow-sm' : 'bg-slate-800 text-slate-400 border-slate-700'}`}
             >
               <span className="w-2 h-2 rounded-full bg-slate-900 border border-white shrink-0"></span>
-              <span className="hidden xl:inline">All Rail Stations ({ALL_INDIAN_RAIL_STATIONS.length})</span>
+              <span className="hidden xl:inline">Stations ({ALL_INDIAN_RAIL_STATIONS.length})</span>
             </button>
 
             {/* HIGHLIGHTED MARKER SIZE TOGGLE */}
@@ -579,10 +625,10 @@ export default function GISMap() {
                 setMarkerSizeMode(prev => prev === 'adaptive' ? 'compact' : (prev === 'compact' ? 'minimal' : 'adaptive'));
               }}
               title={`Record Station Icon Size: ${markerSizeMode.toUpperCase()} (Click to cycle Adaptive / Compact / Minimal)`}
-              className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border text-xs font-bold bg-slate-800 hover:bg-slate-750 text-slate-300 border-slate-700 transition-all"
+              className="flex items-center gap-1 px-2 py-1.5 rounded-lg border text-xs font-bold bg-slate-800 hover:bg-slate-750 text-slate-300 border-slate-700 transition-all"
             >
               <span className={`w-2 h-2 rounded-full ${markerSizeMode === 'minimal' ? 'bg-emerald-400' : (markerSizeMode === 'compact' ? 'bg-amber-400' : 'bg-rose-500')} shadow-sm shrink-0`}></span>
-              <span className="hidden md:inline text-slate-400">Markers:</span>
+              <span className="hidden lg:inline text-slate-400">Size:</span>
               <span className="text-amber-300 font-mono capitalize">{markerSizeMode}</span>
             </button>
 
@@ -590,12 +636,12 @@ export default function GISMap() {
             <button
               onClick={toggleFullscreen}
               title={isFullscreen ? "Exit Fullscreen" : "Enter Fullscreen Map"}
-              className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-blue-600/30 hover:bg-blue-600/50 border border-blue-500/50 text-xs font-bold text-blue-200 transition-all"
+              className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-blue-600/30 hover:bg-blue-600/50 border border-blue-500/50 text-xs font-bold text-blue-200 transition-all flex-shrink-0"
             >
               {isFullscreen ? (
                 <>
                   <Minimize2 className="w-3.5 h-3.5 text-blue-300" />
-                  <span className="hidden sm:inline">Exit Fullscreen</span>
+                  <span className="hidden sm:inline">Exit</span>
                 </>
               ) : (
                 <>

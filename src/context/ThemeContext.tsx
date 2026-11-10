@@ -19,12 +19,18 @@ const ThemeContext = createContext<ThemeContextType>({
 export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [theme, setThemeState] = useState<Theme>(() => {
     const saved = localStorage.getItem('ir_theme') as Theme | null;
-    return saved === 'light' ? 'light' : 'dark'; // Default to dark command center mode
+    if (saved === 'light' || saved === 'dark') return saved;
+    // Light is the default for the presentation; respect prefers-color-scheme if explicitly dark
+    if (typeof window !== 'undefined' && window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
+      return 'dark';
+    }
+    return 'light';
   });
 
   useEffect(() => {
     localStorage.setItem('ir_theme', theme);
     const root = document.documentElement;
+    root.setAttribute('data-theme', theme);
     if (theme === 'dark') {
       root.classList.add('dark');
       root.classList.remove('light');

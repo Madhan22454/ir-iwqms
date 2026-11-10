@@ -4,6 +4,7 @@ import axios from 'axios';
 import { AlertTriangle, Filter, RefreshCw, ChevronRight, Clock, CheckCircle } from 'lucide-react';
 
 import { API_URL as API } from '../config/api';
+import { DEMO_ALERTS } from '../data/mockDemoData';
 
 const STATUS_STYLES: Record<string, { bg: string; text: string; dot: string }> = {
   OPEN: { bg: 'bg-red-900/30 border-red-500/50', text: 'text-red-400', dot: 'bg-red-500' },
@@ -56,16 +57,78 @@ export default function AlertCentre() {
 
   const load = useCallback(async () => {
     setLoading(true);
-    const params = new URLSearchParams();
-    if (statusFilter) params.set('status', statusFilter);
-    if (resultFilter) params.set('result', resultFilter);
-    const [alertsRes, summaryRes] = await Promise.all([
-      axios.get(`${API}/alerts/?${params}`),
-      axios.get(`${API}/alerts/summary`),
-    ]);
-    setAlerts(alertsRes.data);
-    setSummary(summaryRes.data);
-    setLoading(false);
+    try {
+      const params = new URLSearchParams();
+      if (statusFilter) params.set('status', statusFilter);
+      if (resultFilter) params.set('result', resultFilter);
+      const [alertsRes, summaryRes] = await Promise.allSettled([
+        axios.get(`${API}/alerts/?${params}`),
+        axios.get(`${API}/alerts/summary`),
+      ]);
+
+      const hasLiveAlerts = alertsRes.status === 'fulfilled' && alertsRes.value.data?.length > 0;
+      if (hasLiveAlerts) {
+        setAlerts(alertsRes.value.data);
+        setSummary((summaryRes.status === 'fulfilled' && summaryRes.value.data) || null);
+      } else {
+        // Load realistic demonstration alerts
+        const mappedDemo: AlertItem[] = DEMO_ALERTS.map(a => ({
+          id: a.id,
+          alert_id: a.alert_id,
+          severity: a.severity,
+          source_id_code: a.source_id_code,
+          zone_name: a.zone_name,
+          division_name: a.division_name,
+          station_name: a.station_name,
+          source_type: a.source_type,
+          sample_result: `${a.parameter_name}: ${a.sample_value}`,
+          sample_date: a.sample_date,
+          status: a.status,
+          created_at: a.created_at,
+          due_date: a.due_date,
+          is_escalated: a.is_escalated,
+        }));
+
+        let filtered = mappedDemo;
+        if (statusFilter) {
+          filtered = filtered.filter(a => a.status === statusFilter);
+        }
+        if (resultFilter === 'UNFIT') {
+          filtered = filtered.filter(a => a.severity === 'CRITICAL');
+        }
+
+        setAlerts(filtered);
+        setSummary({
+          total: DEMO_ALERTS.length,
+          critical: DEMO_ALERTS.filter(a => a.severity === 'CRITICAL').length,
+          open: DEMO_ALERTS.filter(a => a.status === 'OPEN').length,
+          unfit: 10,
+          unsatisfactory: 6,
+          escalated: DEMO_ALERTS.filter(a => a.is_escalated).length,
+          closed: 14,
+        });
+      }
+    } catch {
+      // Fallback
+      setAlerts(DEMO_ALERTS.map(a => ({
+        id: a.id,
+        alert_id: a.alert_id,
+        severity: a.severity,
+        source_id_code: a.source_id_code,
+        zone_name: a.zone_name,
+        division_name: a.division_name,
+        station_name: a.station_name,
+        source_type: a.source_type,
+        sample_result: `${a.parameter_name}: ${a.sample_value}`,
+        sample_date: a.sample_date,
+        status: a.status,
+        created_at: a.created_at,
+        due_date: a.due_date,
+        is_escalated: a.is_escalated,
+      })));
+    } finally {
+      setLoading(false);
+    }
   }, [statusFilter, resultFilter]);
 
   useEffect(() => { load(); }, [load]);

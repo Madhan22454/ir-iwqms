@@ -16,6 +16,7 @@
     "autoprefixer": "^10.5.4",
     "axios": "^1.19.0",
     "date-fns": "^4.4.0",
+    "framer-motion": "^14.11.1",
     "leaflet": "^1.9.4",
     "leaflet.markercluster": "^1.5.3",
     "lucide-react": "^1.33.0",
