@@ -52,6 +52,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   // Set axios default auth header whenever token changes
   useEffect(() => {
     if (token) {
+      if (token === 'demo-token-central-admin') {
+        setUser(DEMO_USER);
+        setIsLoading(false);
+        return;
+      }
+
       axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
       if (token === 'demo-token-central-admin') {
         setUser(DEMO_USER);

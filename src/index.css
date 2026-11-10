@@ -484,3 +484,16 @@ html, body {
 .dark .leaflet-tile-pane {
   filter: var(--map-tile-filter);
 }
+
+/* Ensure Leaflet containers fill their parent */
+.leaflet-container {
+  width: 100%;
+  height: 100%;
+}
+
+/* Custom marker and cluster icon reset (prevent Leaflet defaults) */
+.custom-marker,
+.custom-cluster-icon {
+  background: transparent !important;
+  border: none !important;
+}
