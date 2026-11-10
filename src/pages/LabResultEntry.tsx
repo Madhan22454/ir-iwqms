@@ -761,7 +761,7 @@ export default function LabResultEntry() {
               </button>
               {result.alert_created && (
                 <button
-                  onClick={() => window.location.href = '/alerts'}
+                  onClick={() => window.location.hash = '#/alerts'}
                   className="ir-btn-primary w-full sm:w-auto flex-1 py-3"
                 >
                   Proceed to Alert Centre & Dispatch
