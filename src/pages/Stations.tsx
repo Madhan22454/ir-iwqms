@@ -13,6 +13,11 @@ import {
   Droplets
 } from 'lucide-react';
 import { API_URL } from '../config/api';
+import { 
+  DEMO_STATIONS,
+  DEMO_DIVISIONS,
+  DEMO_ZONES,
+} from '../data/mockDemoData';
 
 interface Station {
   id: number;
@@ -72,20 +77,69 @@ export default function Stations() {
     setLoading(true);
     setError(null);
     try {
-      const [stnRes, divRes, zoneRes, wsRes] = await Promise.all([
+      const [stnRes, divRes, zoneRes, wsRes] = await Promise.allSettled([
         axios.get(`${API_URL}/hierarchy/stations/`),
         axios.get(`${API_URL}/hierarchy/divisions/`),
         axios.get(`${API_URL}/hierarchy/zones/`),
         axios.get(`${API_URL}/hierarchy/water-sources/`),
       ]);
 
-      setStations(stnRes.data || []);
-      setDivisions(divRes.data || []);
-      setZones(zoneRes.data || []);
-      setWaterSources(wsRes.data || []);
-    } catch (err: any) {
-      console.error('Failed to load stations data:', err);
-      setError(err?.response?.data?.detail || err?.message || 'Failed to load station registry. Please check network connection.');
+      const hasLiveStations = stnRes.status === 'fulfilled' && stnRes.value.data?.length > 10;
+      if (hasLiveStations) {
+        setStations(stnRes.value.data);
+        setDivisions((divRes.status === 'fulfilled' && divRes.value.data) || []);
+        setZones((zoneRes.status === 'fulfilled' && zoneRes.value.data) || []);
+        setWaterSources((wsRes.status === 'fulfilled' && wsRes.value.data) || []);
+      } else {
+        // Load rich 280+ stations demo registry
+        const mappedStations: Station[] = DEMO_STATIONS.map((s, idx) => ({
+          id: s.id,
+          name: s.name,
+          code: s.code,
+          category: s.category,
+          gps_lat: s.lat,
+          gps_long: s.lng,
+          division_id: (idx % DEMO_DIVISIONS.length) + 1,
+        }));
+
+        const mappedDivs: Division[] = DEMO_DIVISIONS.map(d => ({
+          id: d.id,
+          name: d.name,
+          code: d.code,
+          zone_id: d.zone_id,
+        }));
+
+        const mappedZones: Zone[] = DEMO_ZONES.map(z => ({
+          id: z.id,
+          name: z.name,
+          code: z.code,
+        }));
+
+        const mappedSources: WaterSource[] = DEMO_STATIONS.map(s => ({
+          id: s.id,
+          station_id: s.id,
+          source_id_code: `WS-${s.code}-01`,
+          current_status: s.status,
+        }));
+
+        setStations(mappedStations);
+        setDivisions(mappedDivs);
+        setZones(mappedZones);
+        setWaterSources(mappedSources);
+      }
+    } catch {
+      // Fallback
+      setStations(DEMO_STATIONS.map((s, idx) => ({
+        id: s.id,
+        name: s.name,
+        code: s.code,
+        category: s.category,
+        gps_lat: s.lat,
+        gps_long: s.lng,
+        division_id: (idx % DEMO_DIVISIONS.length) + 1,
+      })));
+      setDivisions(DEMO_DIVISIONS.map(d => ({ id: d.id, name: d.name, code: d.code, zone_id: d.zone_id })));
+      setZones(DEMO_ZONES.map(z => ({ id: z.id, name: z.name, code: z.code })));
     } finally {
       setLoading(false);
     }
@@ -208,22 +262,11 @@ export default function Stations() {
   }, [searchTerm, selectedZone, selectedDivision, selectedCategory, selectedStatus]);
 
   return (
-    <div style={{ height: '100%', overflowY: 'auto', background: '#f8fafc', padding: '24px 28px' }}>
-      <div style={{ maxWidth: 1400, margin: '0 auto', display: 'flex', flexDirection: 'column', gap: 20 }}>
+    <div className="ir-page">
+      <div className="ir-container">
         
         {/* Header */}
-        <div style={{
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-          flexWrap: 'wrap',
-          gap: 16,
-          background: '#ffffff',
-          padding: '20px 24px',
-          borderRadius: 12,
-          border: '1px solid #e2e8f0',
-          boxShadow: '0 1px 3px rgba(0,0,0,0.04)'
-        }}>
+        <div className="ir-header-card">
           <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
             <div style={{
               background: 'linear-gradient(135deg, #1e3a8a, #2563eb)',
@@ -232,13 +275,13 @@ export default function Stations() {
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              boxShadow: '0 4px 10px rgba(30,58,138,0.2)'
+              boxShadow: '0 4px 10px rgba(30,58,138,0.25)'
             }}>
               <Train size={24} color="#ffffff" />
             </div>
             <div>
               <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                <h1 style={{ fontSize: 22, fontWeight: 800, color: '#0f172a', margin: 0 }}>
+                <h1 style={{ fontSize: 22, fontWeight: 800, color: 'var(--text-primary)', margin: 0 }}>
                   Railway Station Registry
                 </h1>
                 <span style={{
@@ -246,14 +289,14 @@ export default function Stations() {
                   fontWeight: 700,
                   padding: '2px 8px',
                   borderRadius: 12,
-                  background: '#eff6ff',
-                  color: '#1d4ed8',
-                  border: '1px solid #bfdbfe'
+                  background: 'rgba(37, 99, 235, 0.15)',
+                  color: '#3b82f6',
+                  border: '1px solid rgba(37, 99, 235, 0.3)'
                 }}>
                   {filteredStations.length} Total
                 </span>
               </div>
-              <p style={{ fontSize: 13, color: '#64748b', margin: '4px 0 0 0' }}>
+              <p style={{ fontSize: 13, color: 'var(--text-muted)', margin: '4px 0 0 0' }}>
                 Indian Railways station directory with GIS coordinates, water source distribution, and live surveillance status
               </p>
             </div>
@@ -263,19 +306,7 @@ export default function Stations() {
             <button
               onClick={fetchData}
               disabled={loading}
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: 6,
-                padding: '9px 14px',
-                background: '#ffffff',
-                border: '1px solid #cbd5e1',
-                borderRadius: 8,
-                fontSize: 13,
-                fontWeight: 600,
-                color: '#334155',
-                cursor: loading ? 'not-allowed' : 'pointer'
-              }}
+              className="ir-btn-secondary"
             >
               <RefreshCw size={15} className={loading ? 'animate-spin' : ''} />
               Refresh
@@ -284,12 +315,8 @@ export default function Stations() {
         </div>
 
         {/* Filter Controls Bar */}
-        <div style={{
-          background: '#ffffff',
+        <div className="ir-card" style={{
           padding: '16px 20px',
-          borderRadius: 12,
-          border: '1px solid #e2e8f0',
-          boxShadow: '0 1px 3px rgba(0,0,0,0.03)',
           display: 'flex',
           flexDirection: 'column',
           gap: 14
@@ -298,22 +325,14 @@ export default function Stations() {
             
             {/* Search */}
             <div style={{ position: 'relative' }}>
-              <Search size={16} color="#94a3b8" style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)' }} />
+              <Search size={16} color="var(--text-muted)" style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)' }} />
               <input
                 type="text"
                 placeholder="Search station code or name..."
                 value={searchTerm}
                 onChange={e => setSearchTerm(e.target.value)}
-                style={{
-                  width: '100%',
-                  padding: '8px 12px 8px 36px',
-                  border: '1px solid #cbd5e1',
-                  borderRadius: 8,
-                  fontSize: 13.5,
-                  outline: 'none',
-                  background: '#f8fafc',
-                  color: '#0f172a'
-                }}
+                className="ir-input"
+                style={{ width: '100%', paddingLeft: 36 }}
               />
             </div>
 
@@ -325,17 +344,8 @@ export default function Stations() {
                   setSelectedZone(e.target.value);
                   setSelectedDivision('ALL');
                 }}
-                style={{
-                  width: '100%',
-                  padding: '8px 12px',
-                  border: '1px solid #cbd5e1',
-                  borderRadius: 8,
-                  fontSize: 13,
-                  outline: 'none',
-                  background: '#f8fafc',
-                  color: '#0f172a',
-                  fontWeight: 500
-                }}
+                className="ir-input"
+                style={{ width: '100%' }}
               >
                 <option value="ALL">All Railway Zones ({zones.length})</option>
                 {zones.map(z => (
@@ -349,17 +359,8 @@ export default function Stations() {
               <select
                 value={selectedDivision}
                 onChange={e => setSelectedDivision(e.target.value)}
-                style={{
-                  width: '100%',
-                  padding: '8px 12px',
-                  border: '1px solid #cbd5e1',
-                  borderRadius: 8,
-                  fontSize: 13,
-                  outline: 'none',
-                  background: '#f8fafc',
-                  color: '#0f172a',
-                  fontWeight: 500
-                }}
+                className="ir-input"
+                style={{ width: '100%' }}
               >
                 <option value="ALL">All Divisions ({filteredDivisionsList.length})</option>
                 {filteredDivisionsList.map(d => (
@@ -373,17 +374,8 @@ export default function Stations() {
               <select
                 value={selectedCategory}
                 onChange={e => setSelectedCategory(e.target.value)}
-                style={{
-                  width: '100%',
-                  padding: '8px 12px',
-                  border: '1px solid #cbd5e1',
-                  borderRadius: 8,
-                  fontSize: 13,
-                  outline: 'none',
-                  background: '#f8fafc',
-                  color: '#0f172a',
-                  fontWeight: 500
-                }}
+                className="ir-input"
+                style={{ width: '100%' }}
               >
                 <option value="ALL">All Categories</option>
                 {categories.map(c => (
@@ -397,17 +389,8 @@ export default function Stations() {
               <select
                 value={selectedStatus}
                 onChange={e => setSelectedStatus(e.target.value)}
-                style={{
-                  width: '100%',
-                  padding: '8px 12px',
-                  border: '1px solid #cbd5e1',
-                  borderRadius: 8,
-                  fontSize: 13,
-                  outline: 'none',
-                  background: '#f8fafc',
-                  color: '#0f172a',
-                  fontWeight: 500
-                }}
+                className="ir-input"
+                style={{ width: '100%' }}
               >
                 <option value="ALL">All Surveillance Statuses</option>
                 <option value="COMPLIANT">COMPLIANT</option>
@@ -424,23 +407,20 @@ export default function Stations() {
 
         {/* Content Area */}
         {loading ? (
-          <div style={{
-            background: '#ffffff',
-            borderRadius: 12,
-            border: '1px solid #e2e8f0',
+          <div className="ir-card" style={{
             padding: '60px 20px',
             textAlign: 'center'
           }}>
             <div style={{
               width: 36,
               height: 36,
-              border: '3px solid #cbd5e1',
-              borderTopColor: '#1e3a8a',
+              border: '3px solid var(--border-color)',
+              borderTopColor: '#2563eb',
               borderRadius: '50%',
               margin: '0 auto 16px auto',
               animation: 'spin 0.8s linear infinite'
             }} />
-            <p style={{ color: '#64748b', fontSize: 14, fontWeight: 500 }}>Loading railway stations...</p>
+            <p style={{ color: 'var(--text-muted)', fontSize: 14 }}>Loading railway stations...</p>
           </div>
         ) : error ? (
           <div style={{
@@ -470,40 +450,31 @@ export default function Stations() {
             </button>
           </div>
         ) : filteredStations.length === 0 ? (
-          <div style={{
-            background: '#ffffff',
-            borderRadius: 12,
-            border: '1px solid #e2e8f0',
+          <div className="ir-card" style={{
             padding: '60px 20px',
             textAlign: 'center'
           }}>
-            <Train size={36} color="#94a3b8" style={{ margin: '0 auto 12px auto' }} />
-            <h3 style={{ fontSize: 16, fontWeight: 700, color: '#1e293b', margin: '0 0 4px 0' }}>No Stations Found</h3>
-            <p style={{ fontSize: 13, color: '#64748b', margin: 0 }}>
+            <Train size={36} color="var(--text-muted)" style={{ margin: '0 auto 12px auto' }} />
+            <h3 style={{ fontSize: 16, fontWeight: 700, color: 'var(--text-primary)', margin: '0 0 4px 0' }}>No Stations Found</h3>
+            <p style={{ fontSize: 13, color: 'var(--text-muted)', margin: 0 }}>
               No stations match the selected filters or search terms. Try clearing filters.
             </p>
           </div>
         ) : (
-          <div style={{
-            background: '#ffffff',
-            borderRadius: 12,
-            border: '1px solid #e2e8f0',
-            overflow: 'hidden',
-            boxShadow: '0 1px 3px rgba(0,0,0,0.03)'
-          }}>
+          <div className="ir-card overflow-hidden">
             <div style={{ overflowX: 'auto' }}>
-              <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: 13 }}>
+              <table className="ir-table">
                 <thead>
-                  <tr style={{ background: '#f8fafc', borderBottom: '1px solid #e2e8f0' }}>
-                    <th style={{ padding: '12px 16px', fontWeight: 700, color: '#475569', fontSize: 12, textTransform: 'uppercase', letterSpacing: '0.04em' }}>Station Code</th>
-                    <th style={{ padding: '12px 16px', fontWeight: 700, color: '#475569', fontSize: 12, textTransform: 'uppercase', letterSpacing: '0.04em' }}>Station Name</th>
-                    <th style={{ padding: '12px 16px', fontWeight: 700, color: '#475569', fontSize: 12, textTransform: 'uppercase', letterSpacing: '0.04em' }}>Zone</th>
-                    <th style={{ padding: '12px 16px', fontWeight: 700, color: '#475569', fontSize: 12, textTransform: 'uppercase', letterSpacing: '0.04em' }}>Division</th>
-                    <th style={{ padding: '12px 16px', fontWeight: 700, color: '#475569', fontSize: 12, textTransform: 'uppercase', letterSpacing: '0.04em' }}>Category</th>
-                    <th style={{ padding: '12px 16px', fontWeight: 700, color: '#475569', fontSize: 12, textTransform: 'uppercase', letterSpacing: '0.04em' }}>GPS Coordinates</th>
-                    <th style={{ padding: '12px 16px', fontWeight: 700, color: '#475569', fontSize: 12, textTransform: 'uppercase', letterSpacing: '0.04em' }}>Water Sources</th>
-                    <th style={{ padding: '12px 16px', fontWeight: 700, color: '#475569', fontSize: 12, textTransform: 'uppercase', letterSpacing: '0.04em' }}>Status</th>
-                    <th style={{ padding: '12px 16px', fontWeight: 700, color: '#475569', fontSize: 12, textTransform: 'uppercase', letterSpacing: '0.04em', textAlign: 'right' }}>Action</th>
+                  <tr>
+                    <th>Station Code</th>
+                    <th>Station Name</th>
+                    <th>Zone</th>
+                    <th>Division</th>
+                    <th>Category</th>
+                    <th>GPS Coordinates</th>
+                    <th>Water Sources</th>
+                    <th>Status</th>
+                    <th style={{ textAlign: 'right' }}>Action</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -517,71 +488,65 @@ export default function Stations() {
                       <tr
                         key={station.id}
                         onClick={() => navigate(`/stations/${station.id}`)}
-                        style={{
-                          borderBottom: '1px solid #f1f5f9',
-                          cursor: 'pointer',
-                          transition: 'background 0.15s ease'
-                        }}
-                        onMouseEnter={e => (e.currentTarget.style.background = '#f8fafc')}
-                        onMouseLeave={e => (e.currentTarget.style.background = '#ffffff')}
+                        style={{ cursor: 'pointer' }}
                       >
-                        <td style={{ padding: '12px 16px' }}>
+                        <td>
                           <span style={{
                             fontWeight: 800,
-                            color: '#1e3a8a',
+                            color: '#0284c7',
                             fontFamily: 'monospace',
-                            background: '#eff6ff',
+                            background: 'rgba(2, 132, 199, 0.1)',
                             padding: '3px 8px',
                             borderRadius: 6,
-                            border: '1px solid #bfdbfe'
+                            border: '1px solid rgba(2, 132, 199, 0.25)'
                           }}>
                             {station.code}
                           </span>
                         </td>
-                        <td style={{ padding: '12px 16px', fontWeight: 600, color: '#0f172a' }}>
+                        <td style={{ fontWeight: 600 }}>
                           {station.name}
                         </td>
-                        <td style={{ padding: '12px 16px', color: '#334155' }}>
+                        <td>
                           {zone?.code || '—'}
                         </td>
-                        <td style={{ padding: '12px 16px', color: '#334155' }}>
+                        <td>
                           {div?.name || '—'}
                         </td>
-                        <td style={{ padding: '12px 16px' }}>
+                        <td>
                           <span style={{
                             fontSize: 11.5,
                             fontWeight: 700,
-                            background: '#f1f5f9',
-                            color: '#475569',
+                            background: 'var(--badge-neutral-bg)',
+                            color: 'var(--badge-neutral-text)',
                             padding: '2px 8px',
                             borderRadius: 4
                           }}>
                             {station.category || 'Standard'}
                           </span>
                         </td>
-                        <td style={{ padding: '12px 16px', color: '#64748b', fontSize: 12.5, fontFamily: 'monospace' }}>
+                        <td style={{ color: 'var(--text-muted)', fontSize: 12.5, fontFamily: 'monospace' }}>
                           {station.gps_lat && station.gps_long ? (
                             <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
-                              <MapPin size={13} color="#94a3b8" />
+                              <MapPin size={13} color="var(--text-muted)" />
                               {station.gps_lat.toFixed(4)}, {station.gps_long.toFixed(4)}
                             </span>
                           ) : (
-                            <span style={{ color: '#cbd5e1' }}>Not Set</span>
+                            <span style={{ color: 'var(--text-muted)' }}>Not Set</span>
                           )}
                         </td>
-                        <td style={{ padding: '12px 16px' }}>
+                        <td>
                           <span style={{
                             display: 'inline-flex',
                             alignItems: 'center',
                             gap: 5,
                             fontWeight: 700,
-                            color: stnSources.length > 0 ? '#1e3a8a' : '#94a3b8'
+                            color: stnSources.length > 0 ? '#0284c7' : 'var(--text-muted)'
                           }}>
-                            <Droplets size={14} color={stnSources.length > 0 ? '#3b82f6' : '#cbd5e1'} />
+                            <Droplets size={14} color={stnSources.length > 0 ? '#38bdf8' : 'var(--text-muted)'} />
                             {stnSources.length} Sources
                           </span>
                         </td>
-                        <td style={{ padding: '12px 16px' }}>
+                        <td>
                           <span style={{
                             fontSize: 11,
                             fontWeight: 800,
@@ -596,25 +561,14 @@ export default function Stations() {
                             {status.label}
                           </span>
                         </td>
-                        <td style={{ padding: '12px 16px', textAlign: 'right' }}>
+                        <td style={{ textAlign: 'right' }}>
                           <button
                             onClick={e => {
                               e.stopPropagation();
                               navigate(`/stations/${station.id}`);
                             }}
-                            style={{
-                              background: '#eff6ff',
-                              border: '1px solid #bfdbfe',
-                              color: '#1d4ed8',
-                              padding: '5px 10px',
-                              borderRadius: 6,
-                              fontSize: 12,
-                              fontWeight: 700,
-                              display: 'inline-flex',
-                              alignItems: 'center',
-                              gap: 4,
-                              cursor: 'pointer'
-                            }}
+                            className="ir-btn-secondary"
+                            style={{ padding: '5px 10px', fontSize: 12 }}
                           >
                             View
                             <ExternalLink size={12} />
@@ -633,34 +587,28 @@ export default function Stations() {
               justifyContent: 'space-between',
               alignItems: 'center',
               padding: '14px 20px',
-              borderTop: '1px solid #e2e8f0',
-              background: '#f8fafc',
+              borderTop: '1px solid var(--border-color)',
+              background: 'var(--table-header-bg)',
               fontSize: 13,
-              color: '#64748b',
+              color: 'var(--text-muted)',
               flexWrap: 'wrap',
               gap: 12
             }}>
               <div>
-                Showing <strong style={{ color: '#0f172a' }}>{(currentPage - 1) * pageSize + 1}</strong> to{' '}
-                <strong style={{ color: '#0f172a' }}>{Math.min(currentPage * pageSize, filteredStations.length)}</strong> of{' '}
-                <strong style={{ color: '#0f172a' }}>{filteredStations.length}</strong> stations
+                Showing <strong style={{ color: 'var(--text-primary)' }}>{(currentPage - 1) * pageSize + 1}</strong> to{' '}
+                <strong style={{ color: 'var(--text-primary)' }}>{Math.min(currentPage * pageSize, filteredStations.length)}</strong> of{' '}
+                <strong style={{ color: 'var(--text-primary)' }}>{filteredStations.length}</strong> stations
               </div>
 
-              <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                 <button
                   onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
                   disabled={currentPage === 1}
+                  className="ir-btn-secondary"
                   style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: 4,
                     padding: '6px 12px',
-                    borderRadius: 6,
-                    border: '1px solid #cbd5e1',
-                    background: '#ffffff',
                     fontSize: 12.5,
-                    fontWeight: 600,
-                    color: currentPage === 1 ? '#94a3b8' : '#334155',
+                    opacity: currentPage === 1 ? 0.5 : 1,
                     cursor: currentPage === 1 ? 'not-allowed' : 'pointer'
                   }}
                 >
@@ -668,24 +616,18 @@ export default function Stations() {
                   Previous
                 </button>
 
-                <span style={{ padding: '0 8px', fontSize: 12.5, fontWeight: 700, color: '#0f172a' }}>
+                <span style={{ padding: '0 8px', fontSize: 12.5, fontWeight: 700, color: 'var(--text-primary)' }}>
                   Page {currentPage} of {totalPages}
                 </span>
 
                 <button
                   onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
                   disabled={currentPage === totalPages}
+                  className="ir-btn-secondary"
                   style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: 4,
                     padding: '6px 12px',
-                    borderRadius: 6,
-                    border: '1px solid #cbd5e1',
-                    background: '#ffffff',
                     fontSize: 12.5,
-                    fontWeight: 600,
-                    color: currentPage === totalPages ? '#94a3b8' : '#334155',
+                    opacity: currentPage === totalPages ? 0.5 : 1,
                     cursor: currentPage === totalPages ? 'not-allowed' : 'pointer'
                   }}
                 >

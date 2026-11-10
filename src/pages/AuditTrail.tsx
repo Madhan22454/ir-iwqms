@@ -38,39 +38,54 @@ export default function AuditTrail() {
   });
 
   return (
-    <div className="min-h-screen p-6" style={{ background: 'linear-gradient(135deg,#0f172a 0%,#1e1b4b 100%)' }}>
-      <div className="max-w-6xl mx-auto space-y-6">
-        <div className="flex items-center gap-4">
-          <div className="p-3 rounded-xl bg-violet-600/20 border border-violet-500/30">
-            <Activity className="w-7 h-7 text-violet-400" />
-          </div>
-          <div>
-            <h1 className="text-2xl font-bold text-white">Audit Trail</h1>
-            <p className="text-blue-300 text-sm">Complete immutable log of all system events</p>
+    <div className="ir-page">
+      <div className="ir-container space-y-6">
+        <div className="ir-header-card flex items-center justify-between">
+          <div className="flex items-center gap-4">
+            <div className="p-3 rounded-xl bg-violet-500/15 border border-violet-500/30">
+              <Activity className="w-7 h-7 text-violet-500" />
+            </div>
+            <div>
+              <h1 className="text-2xl font-black tracking-tight" style={{ color: 'var(--text-primary)' }}>
+                System Audit Trail
+              </h1>
+              <p className="text-sm font-medium mt-0.5" style={{ color: 'var(--text-secondary)' }}>
+                Complete immutable security and compliance ledger of all operational events
+              </p>
+            </div>
           </div>
         </div>
 
         {loading ? (
-          <div className="text-center py-16 text-white/40">Loading audit log...</div>
+          <div className="ir-card text-center py-16" style={{ color: 'var(--text-muted)' }}>
+            Loading audit log entries...
+          </div>
         ) : (
-          <div className="space-y-1">
+          <div className="ir-card p-4 space-y-2">
             {logs.map(log => (
-              <div key={log.id} className="flex items-start gap-4 p-4 rounded-xl hover:bg-white/[0.02] transition-colors"
-                style={{ border: '1px solid rgba(255,255,255,0.05)' }}>
-                <div className="text-xs text-white/30 font-mono whitespace-nowrap pt-0.5 w-36">{fmt(log.created_at)}</div>
-                <div>
+              <div 
+                key={log.id} 
+                className="flex items-start gap-4 p-3.5 rounded-xl transition-colors"
+                style={{ background: 'var(--bg-page)', border: '1px solid var(--border-color)' }}
+              >
+                <div className="text-xs font-mono whitespace-nowrap pt-0.5 w-40" style={{ color: 'var(--text-muted)' }}>
+                  {fmt(log.created_at)}
+                </div>
+                <div className="flex-1">
                   <span className={`inline-block px-2 py-0.5 rounded text-xs font-bold mr-2 ${ACTION_COLORS[log.action] || 'bg-gray-900/30 text-gray-400'}`}>
                     {log.action}
                   </span>
-                  <span className="text-white/80 text-sm">{log.details}</span>
+                  <span className="text-sm font-medium" style={{ color: 'var(--text-primary)' }}>
+                    {log.details}
+                  </span>
                 </div>
-                <div className="ml-auto text-right text-xs">
-                  <div className="text-white/40">{log.user_name}</div>
-                  <div className="text-white/25">{log.user_role}</div>
+                <div className="text-right text-xs">
+                  <div className="font-bold" style={{ color: 'var(--text-primary)' }}>{log.user_name}</div>
+                  <div style={{ color: 'var(--text-muted)' }}>{log.user_role}</div>
                 </div>
               </div>
             ))}
-            {logs.length === 0 && <div className="text-center py-8 text-white/40">No audit records found.</div>}
+            {logs.length === 0 && <div className="text-center py-8" style={{ color: 'var(--text-muted)' }}>No audit records found.</div>}
           </div>
         )}
       </div>
