@@ -34,7 +34,8 @@
 
 ## 🚀 Live Demo & Repository
 
-- **Repository**: [https://github.com/arunp061106/ir-iwqms-2](https://github.com/arunp061106/ir-iwqms-2)
+- **Live System (GitHub Pages)**: [https://madhan22454.github.io/ir-iwqms/#/](https://madhan22454.github.io/ir-iwqms/#/)
+- **Repository**: [https://github.com/Madhan22454/ir-iwqms](https://github.com/Madhan22454/ir-iwqms)
 - **Live Deployment Options**:
   - **GitHub Pages**: Automatically deployed via GitHub Actions workflow (`.github/workflows/deploy.yml`) on push to `main`.
   - **Vercel**: Pre-configured via `vercel.json` for one-click full-stack deployment.
@@ -49,8 +50,8 @@
 
 ### 1. Clone the Repository
 ```bash
-git clone https://github.com/arunp061106/ir-iwqms-2.git
-cd ir-iwqms-2
+git clone https://github.com/Madhan22454/ir-iwqms.git
+cd ir-iwqms
 ```
 
 ### 2. Frontend Setup

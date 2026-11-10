@@ -1,4 +1,4 @@
-from typing import Generator, Annotated, Optional
+from typing import Generator, Annotated
 from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
 from jose import jwt, JWTError
@@ -8,8 +8,7 @@ from core.config import settings
 from models.user import User
 
 reusable_oauth2 = OAuth2PasswordBearer(
-    tokenUrl=f"{settings.API_V1_STR}/login/access-token",
-    auto_error=False
+    tokenUrl=f"{settings.API_V1_STR}/login/access-token"
 )
 
 def get_db() -> Generator:
@@ -20,11 +19,11 @@ def get_db() -> Generator:
         db.close()
 
 SessionDep = Annotated[Session, Depends(get_db)]
-TokenDep = Annotated[Optional[str], Depends(reusable_oauth2)]
+TokenDep = Annotated[str, Depends(reusable_oauth2)]
 
-def get_current_user(db: SessionDep, token: TokenDep = None) -> User:
-    # 1. Seamless demo / local fallback when token is missing or demo token
-    if not token or token == "demo-token-central-admin":
+def get_current_user(db: SessionDep, token: TokenDep) -> User:
+    # 1. Demo token fallback
+    if token == "demo-token-central-admin":
         user = db.query(User).filter(User.id == 1).first() or db.query(User).first()
         if user:
             return user
@@ -46,10 +45,6 @@ def get_current_user(db: SessionDep, token: TokenDep = None) -> User:
         if user_id is None:
             raise HTTPException(status_code=403, detail="Could not validate credentials")
     except JWTError:
-        # If token is expired or invalid in dev/demo mode, gracefully fallback to admin
-        user = db.query(User).filter(User.id == 1).first() or db.query(User).first()
-        if user:
-            return user
         raise HTTPException(status_code=403, detail="Could not validate credentials")
     
     user = db.query(User).filter(User.id == int(user_id)).first()
